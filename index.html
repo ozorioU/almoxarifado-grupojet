@@ -258,6 +258,9 @@
   .badge-posse{background:var(--orange-soft);color:var(--orange);}
   .badge-devolvido{background:var(--gray-pill);color:var(--ink-faint);}
   .badge-estoque{background:var(--blue-soft);color:var(--blue);}
+  .badge-cat-equipamentos{background:var(--blue-soft);color:var(--blue);}
+  .badge-cat-epi{background:var(--green-soft);color:var(--green);}
+  .badge-cat-ferramental{background:#F3E8FF;color:#7C3AED;}
 
   .empty-state{text-align:center;padding:50px 20px;color:var(--ink-soft);}
   .empty-state .icon{font-size:30px;margin-bottom:8px;}
@@ -543,17 +546,13 @@
                   <label>Descrição do item *</label>
                   <input type="text" id="s_descricao" required placeholder="Ex.: Monitor LG 24''">
                 </div>
-                <div class="form-field">
-                  <label>Categoria</label>
-                  <input type="text" id="s_categoria" list="categoriasList2" placeholder="Ex.: Informática">
-                  <datalist id="categoriasList2">
-                    <option value="Informática">
-                    <option value="Mobiliário">
-                    <option value="Ferramentas">
-                    <option value="Veículos">
-                    <option value="Equipamentos">
-                    <option value="Outros">
-                  </datalist>
+                <div class="form-field full">
+                  <label>Categoria *</label>
+                  <select id="s_categoria_tipo" onchange="updateStockCategoryFields()">
+                    <option value="Equipamentos">Equipamentos</option>
+                    <option value="EPI">EPI</option>
+                    <option value="Ferramental">Ferramental</option>
+                  </select>
                 </div>
                 <div class="form-field">
                   <label>Estado</label>
@@ -571,6 +570,10 @@
                 <div class="form-field">
                   <label>Data de entrada</label>
                   <input type="date" id="s_data">
+                </div>
+                <div class="form-field full" id="s_ca_wrap" style="display:none;">
+                  <label>CA (Certificado de Aprovação) *</label>
+                  <input type="text" id="s_ca" placeholder="Ex.: 12345 — normalmente é o mesmo CA para todas as unidades deste lote">
                 </div>
                 <div class="form-field full" id="patrimonioInputsWrap"></div>
                 <div class="form-field full">
@@ -699,21 +702,25 @@
           <label>Descrição do item *</label>
           <input type="text" id="i_descricao" required placeholder="Ex.: Notebook Dell Latitude 5420">
         </div>
-        <div class="form-field">
-          <label>Nº de patrimônio *</label>
-          <input type="text" id="i_numero" required placeholder="Ex.: NP-0234">
+        <div class="form-field full">
+          <label>Categoria *</label>
+          <select id="i_categoria_tipo" onchange="updateItemCategoryFields()">
+            <option value="Equipamentos">Equipamentos</option>
+            <option value="EPI">EPI</option>
+            <option value="Ferramental">Ferramental</option>
+          </select>
         </div>
-        <div class="form-field">
-          <label>Categoria</label>
-          <input type="text" id="i_categoria" list="categoriasList" placeholder="Ex.: Informática">
-          <datalist id="categoriasList">
-            <option value="Informática">
-            <option value="Mobiliário">
-            <option value="Ferramentas">
-            <option value="Veículos">
-            <option value="Equipamentos">
-            <option value="Outros">
-          </datalist>
+        <div class="form-field" id="i_numero_wrap">
+          <label id="i_numero_label">Nº de patrimônio *</label>
+          <input type="text" id="i_numero" placeholder="Ex.: NP-0234">
+        </div>
+        <div class="form-field" id="i_serial_wrap" style="display:none;">
+          <label>Número de série *</label>
+          <input type="text" id="i_serial" placeholder="Ex.: SN-88213">
+        </div>
+        <div class="form-field" id="i_ca_wrap" style="display:none;">
+          <label>CA (Certificado de Aprovação) *</label>
+          <input type="text" id="i_ca" placeholder="Ex.: 12345">
         </div>
         <div class="form-field">
           <label>Estado</label>
@@ -837,7 +844,9 @@ function itemToRow(it){
     id: it.id,
     employee_id: it.employeeId || null,
     descricao: it.descricao,
-    numero: it.numero,
+    numero: it.numero || null,
+    serial: it.serial || null,
+    ca: it.ca || null,
     categoria: it.categoria || null,
     estado: it.estado || null,
     obs: it.obs || null,
@@ -853,6 +862,8 @@ function rowToItem(row){
     employeeId: row.employee_id,
     descricao: row.descricao,
     numero: row.numero,
+    serial: row.serial,
+    ca: row.ca,
     categoria: row.categoria,
     estado: row.estado,
     obs: row.obs,
@@ -937,6 +948,16 @@ function fmtDate(d){
   const parts = d.split('-');
   if(parts.length!==3) return d;
   return parts[2]+'/'+parts[1]+'/'+parts[0];
+}
+function formatItemIdentifier(it){
+  if(it.categoria === 'Ferramental') return `Patrimônio ${it.numero||'—'} · Série ${it.serial||'—'}`;
+  if(it.categoria === 'EPI') return `CA ${it.ca||'—'}`;
+  return `Patrimônio ${it.numero||'—'}`;
+}
+function categoryBadgeClass(cat){
+  if(cat==='EPI') return 'badge-cat-epi';
+  if(cat==='Ferramental') return 'badge-cat-ferramental';
+  return 'badge-cat-equipamentos';
 }
 function showToast(msg){
   const t = document.getElementById('toast');
@@ -1144,6 +1165,30 @@ async function openFicha(id){
   await switchView('ficha');
   renderFicha(id);
 }
+function renderTicket(it, emp){
+  return `
+      <div class="ticket ${it.status==='Devolvido'?'devolvido':''}">
+        <div class="ticket-main">
+          <div class="ticket-desc">${escapeHtml(it.descricao)} <span class="badge ${categoryBadgeClass(it.categoria)}" style="margin-left:6px;">${escapeHtml(it.categoria||'—')}</span></div>
+          <div class="ticket-meta">${formatItemIdentifier(it)} · ${escapeHtml(it.estado||'')} · entregue em ${fmtDate(it.dataEntrega)}${it.status==='Devolvido' ? ' · devolvido em '+fmtDate(it.dataDevolucao) : ''}</div>
+          ${it.obs ? `<div class="ticket-meta">${escapeHtml(it.obs)}</div>` : ''}
+        </div>
+        <div class="ticket-actions">
+          <span class="badge ${it.status==='Devolvido'?'badge-devolvido':'badge-posse'}">${it.status||'Em posse'}</span>
+          ${it.status!=='Devolvido' ? `<button class="btn btn-outline btn-sm" onclick="returnItem('${it.id}')">Devolver</button>` : ''}
+          <button class="btn btn-outline btn-sm" onclick="openItemForm('${emp.id}','${it.id}')">Editar</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteItem('${it.id}')">Excluir</button>
+        </div>
+      </div>`;
+}
+
+function setFichaViewMode(mode){
+  state.fichaViewMode = mode;
+  document.getElementById('ficha-toggle-junto').classList.toggle('active', mode==='junto');
+  document.getElementById('ficha-toggle-separado').classList.toggle('active', mode==='separado');
+  renderFicha(state.currentEmployeeId);
+}
+
 function renderFicha(id){
   const emp = state.employees.find(e=>e.id===id);
   const container = document.getElementById('fichaContainer');
@@ -1153,23 +1198,29 @@ function renderFicha(id){
   }
   const itens = state.items.filter(i=>i.employeeId===id).sort((a,b)=>(b.dataEntrega||'').localeCompare(a.dataEntrega||''));
   const emPosse = itens.filter(i=>i.status!=='Devolvido');
+  const mode = state.fichaViewMode || 'junto';
 
-  const ticketsHtml = itens.length===0
-    ? `<div class="empty-state"><div class="icon">📦</div><p>Nenhum item registrado para este colaborador.</p></div>`
-    : itens.map(it=>`
-      <div class="ticket ${it.status==='Devolvido'?'devolvido':''}">
-        <div class="ticket-main">
-          <div class="ticket-desc">${escapeHtml(it.descricao)}</div>
-          <div class="ticket-meta">Nº ${escapeHtml(it.numero)} · ${escapeHtml(it.categoria||'Sem categoria')} · ${escapeHtml(it.estado||'')} · entregue em ${fmtDate(it.dataEntrega)}${it.status==='Devolvido' ? ' · devolvido em '+fmtDate(it.dataDevolucao) : ''}</div>
-          ${it.obs ? `<div class="ticket-meta">${escapeHtml(it.obs)}</div>` : ''}
-        </div>
-        <div class="ticket-actions">
-          <span class="badge ${it.status==='Devolvido'?'badge-devolvido':'badge-posse'}">${it.status||'Em posse'}</span>
-          ${it.status!=='Devolvido' ? `<button class="btn btn-outline btn-sm" onclick="returnItem('${it.id}')">Devolver</button>` : ''}
-          <button class="btn btn-outline btn-sm" onclick="openItemForm('${emp.id}','${it.id}')">Editar</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteItem('${it.id}')">Excluir</button>
-        </div>
-      </div>`).join('');
+  let ticketsHtml;
+  if(itens.length===0){
+    ticketsHtml = `<div class="empty-state"><div class="icon">📦</div><p>Nenhum item registrado para este colaborador.</p></div>`;
+  }else if(mode==='separado'){
+    const cats = ['Equipamentos','EPI','Ferramental'];
+    ticketsHtml = cats.map(cat=>{
+      const list = itens.filter(i=>(i.categoria||'Equipamentos')===cat);
+      return `
+        <div style="margin-bottom:22px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+            <span class="badge ${categoryBadgeClass(cat)}">${cat}</span>
+            <span class="count">${list.length} item(ns)</span>
+          </div>
+          ${list.length===0
+            ? `<div class="empty-state" style="padding:20px;"><p style="margin:0;">Nenhum item de ${cat} para este colaborador.</p></div>`
+            : list.map(it=>renderTicket(it, emp)).join('')}
+        </div>`;
+    }).join('');
+  }else{
+    ticketsHtml = itens.map(it=>renderTicket(it, emp)).join('');
+  }
 
   container.innerHTML = `
     <div class="ficha-header">
@@ -1202,7 +1253,13 @@ function renderFicha(id){
 
       <div class="section-title">
         <h3>Itens do colaborador</h3>
-        <span class="count">${itens.length} registrado(s)</span>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span class="count">${itens.length} registrado(s)</span>
+          <div class="toggle-row" style="margin:0;">
+            <button class="toggle-btn ${mode==='junto'?'active':''}" id="ficha-toggle-junto" onclick="setFichaViewMode('junto')">Ver tudo junto</button>
+            <button class="toggle-btn ${mode==='separado'?'active':''}" id="ficha-toggle-separado" onclick="setFichaViewMode('separado')">Ver por categoria</button>
+          </div>
+        </div>
       </div>
       ${ticketsHtml}
     </div>
@@ -1221,6 +1278,12 @@ async function returnItem(itemId){
   showToast('Item devolvido.');
   dbUpdateItem(it);
 }
+function updateItemCategoryFields(){
+  const cat = document.getElementById('i_categoria_tipo').value;
+  document.getElementById('i_numero_wrap').style.display = (cat==='Equipamentos' || cat==='Ferramental') ? 'block' : 'none';
+  document.getElementById('i_serial_wrap').style.display = (cat==='Ferramental') ? 'block' : 'none';
+  document.getElementById('i_ca_wrap').style.display = (cat==='EPI') ? 'block' : 'none';
+}
 function openItemForm(employeeId, itemId){
   state.itemFormEmployeeId = employeeId;
   state.editingItemId = itemId || null;
@@ -1228,25 +1291,43 @@ function openItemForm(employeeId, itemId){
   document.getElementById('itemModalTitle').textContent = isEdit ? 'Editar item' : 'Adicionar item à ficha';
   const it = isEdit ? state.items.find(i=>i.id===itemId) : null;
   document.getElementById('i_descricao').value = it?.descricao || '';
+  document.getElementById('i_categoria_tipo').value = it?.categoria || 'Equipamentos';
   document.getElementById('i_numero').value = it?.numero || '';
-  document.getElementById('i_categoria').value = it?.categoria || '';
+  document.getElementById('i_serial').value = it?.serial || '';
+  document.getElementById('i_ca').value = it?.ca || '';
   document.getElementById('i_estado').value = it?.estado || 'Novo';
   document.getElementById('i_data').value = it?.dataEntrega || todayStr();
   document.getElementById('i_obs').value = it?.obs || '';
+  updateItemCategoryFields();
   document.getElementById('modalItem').classList.add('active');
 }
 async function saveItemForm(evt){
   evt.preventDefault();
+  const categoria = document.getElementById('i_categoria_tipo').value;
   const data = {
     descricao: document.getElementById('i_descricao').value.trim(),
-    numero: document.getElementById('i_numero').value.trim(),
-    categoria: document.getElementById('i_categoria').value.trim(),
+    categoria,
+    numero: (categoria==='Equipamentos' || categoria==='Ferramental') ? document.getElementById('i_numero').value.trim() : null,
+    serial: categoria==='Ferramental' ? document.getElementById('i_serial').value.trim() : null,
+    ca: categoria==='EPI' ? document.getElementById('i_ca').value.trim() : null,
     estado: document.getElementById('i_estado').value,
     dataEntrega: document.getElementById('i_data').value,
     obs: document.getElementById('i_obs').value.trim()
   };
-  if(!data.descricao || !data.numero){
-    showToast('Preencha a descrição do item e o número de patrimônio.');
+  if(!data.descricao){
+    showToast('Preencha a descrição do item.');
+    return;
+  }
+  if((categoria==='Equipamentos' || categoria==='Ferramental') && !data.numero){
+    showToast('Preencha o número de patrimônio.');
+    return;
+  }
+  if(categoria==='Ferramental' && !data.serial){
+    showToast('Preencha o número de série.');
+    return;
+  }
+  if(categoria==='EPI' && !data.ca){
+    showToast('Preencha o CA (Certificado de Aprovação).');
     return;
   }
   let isNew = false;
@@ -1284,72 +1365,130 @@ async function deleteItem(itemId){
 }
 
 // ---------- STOCK (CADASTRAR ITENS) ----------
+function updateStockCategoryFields(){
+  renderPatrimonioInputs();
+}
 function renderPatrimonioInputs(){
+  const cat = document.getElementById('s_categoria_tipo').value;
   const wrap = document.getElementById('patrimonioInputsWrap');
+  const caWrap = document.getElementById('s_ca_wrap');
   let qty = parseInt(document.getElementById('s_quantidade').value, 10);
   if(!qty || qty < 1) qty = 1;
   if(qty > 300) qty = 300;
 
-  // preserve values already typed
-  const existing = [];
-  wrap.querySelectorAll('input[data-patrimonio]').forEach(inp => existing.push(inp.value));
-
-  let html = `<label>Números de patrimônio (1 por unidade) *</label><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;">`;
-  for(let i=0;i<qty;i++){
-    const val = existing[i] ? escapeHtml(existing[i]) : '';
-    html += `<input type="text" data-patrimonio placeholder="Unidade ${i+1}" value="${val}" required>`;
+  if(cat === 'EPI'){
+    wrap.innerHTML = '';
+    wrap.style.display = 'none';
+    caWrap.style.display = 'block';
+    document.getElementById('stockSubmitBtn').textContent = `Cadastrar ${qty} ${qty===1?'item':'itens'}`;
+    return;
   }
-  html += `</div>`;
-  wrap.innerHTML = html;
+  caWrap.style.display = 'none';
+  wrap.style.display = 'block';
 
+  const existingNumero = [];
+  const existingSerial = [];
+  wrap.querySelectorAll('input[data-patrimonio]').forEach(inp => existingNumero.push(inp.value));
+  wrap.querySelectorAll('input[data-serial]').forEach(inp => existingSerial.push(inp.value));
+
+  let html = '';
+  if(cat === 'Ferramental'){
+    html += `<label>Patrimônio e série (1 par por unidade) *</label><div style="display:flex;flex-direction:column;gap:8px;">`;
+    for(let i=0;i<qty;i++){
+      const valN = existingNumero[i] ? escapeHtml(existingNumero[i]) : '';
+      const valS = existingSerial[i] ? escapeHtml(existingSerial[i]) : '';
+      html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <input type="text" data-patrimonio placeholder="Patrimônio ${i+1}" value="${valN}">
+        <input type="text" data-serial placeholder="Série ${i+1}" value="${valS}">
+      </div>`;
+    }
+    html += `</div>`;
+  }else{
+    html += `<label>Números de patrimônio (1 por unidade) *</label><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;">`;
+    for(let i=0;i<qty;i++){
+      const valN = existingNumero[i] ? escapeHtml(existingNumero[i]) : '';
+      html += `<input type="text" data-patrimonio placeholder="Unidade ${i+1}" value="${valN}">`;
+    }
+    html += `</div>`;
+  }
+  wrap.innerHTML = html;
   document.getElementById('stockSubmitBtn').textContent = `Cadastrar ${qty} ${qty===1?'item':'itens'}`;
+}
+
+function checkDuplicates(values, field){
+  const existing = new Set(state.items.map(i=>normalize(i[field])).filter(Boolean));
+  const seenNow = new Set();
+  for(const v of values){
+    const norm = normalize(v);
+    if(existing.has(norm) || seenNow.has(norm)){
+      showToast(`O valor "${v}" já está em uso (${field==='serial'?'número de série':'patrimônio'}).`);
+      return true;
+    }
+    seenNow.add(norm);
+  }
+  return false;
 }
 
 async function saveStockBatch(evt){
   evt.preventDefault();
   const descricao = document.getElementById('s_descricao').value.trim();
-  const categoria = document.getElementById('s_categoria').value.trim();
+  const categoria = document.getElementById('s_categoria_tipo').value;
   const estado = document.getElementById('s_estado').value;
   const dataAquisicao = document.getElementById('s_data').value;
   const obs = document.getElementById('s_obs').value.trim();
-  const numeroInputs = [...document.querySelectorAll('#patrimonioInputsWrap input[data-patrimonio]')];
-  const numeros = numeroInputs.map(inp => inp.value.trim());
 
   if(!descricao){
     showToast('Preencha a descrição do item.');
     return;
   }
-  if(numeros.some(n => !n)){
-    showToast('Preencha o número de patrimônio de todas as unidades.');
-    return;
-  }
-  const existingNumbers = new Set(state.items.map(i=>normalize(i.numero)));
-  const seenNow = new Set();
-  for(const n of numeros){
-    const norm = normalize(n);
-    if(existingNumbers.has(norm) || seenNow.has(norm)){
-      showToast(`O número de patrimônio "${n}" já está em uso.`);
+
+  let newItems = [];
+
+  if(categoria === 'EPI'){
+    const ca = document.getElementById('s_ca').value.trim();
+    if(!ca){
+      showToast('Preencha o CA (Certificado de Aprovação).');
       return;
     }
-    seenNow.add(norm);
+    let qty = parseInt(document.getElementById('s_quantidade').value, 10);
+    if(!qty || qty < 1) qty = 1;
+    newItems = Array.from({length: qty}, () => ({
+      id: uid(), descricao, categoria, estado, obs, ca, numero: null, serial: null,
+      dataAquisicao, employeeId: null, status: 'Em estoque'
+    }));
+  }else if(categoria === 'Ferramental'){
+    const numeros = [...document.querySelectorAll('#patrimonioInputsWrap input[data-patrimonio]')].map(inp => inp.value.trim());
+    const seriais = [...document.querySelectorAll('#patrimonioInputsWrap input[data-serial]')].map(inp => inp.value.trim());
+    if(numeros.some(n=>!n) || seriais.some(s=>!s)){
+      showToast('Preencha o patrimônio e a série de todas as unidades.');
+      return;
+    }
+    if(checkDuplicates(numeros, 'numero') || checkDuplicates(seriais, 'serial')) return;
+    newItems = numeros.map((numero,i) => ({
+      id: uid(), descricao, categoria, estado, obs, numero, serial: seriais[i], ca: null,
+      dataAquisicao, employeeId: null, status: 'Em estoque'
+    }));
+  }else{
+    const numeros = [...document.querySelectorAll('#patrimonioInputsWrap input[data-patrimonio]')].map(inp => inp.value.trim());
+    if(numeros.some(n=>!n)){
+      showToast('Preencha o número de patrimônio de todas as unidades.');
+      return;
+    }
+    if(checkDuplicates(numeros, 'numero')) return;
+    newItems = numeros.map(numero => ({
+      id: uid(), descricao, categoria, estado, obs, numero, serial: null, ca: null,
+      dataAquisicao, employeeId: null, status: 'Em estoque'
+    }));
   }
 
-  const newItems = numeros.map(numero => ({
-    id: uid(),
-    descricao, categoria, estado, obs,
-    numero,
-    dataAquisicao,
-    employeeId: null,
-    status: 'Em estoque'
-  }));
   state.items.push(...newItems);
-  showToast(`${numeros.length} ${numeros.length===1?'item cadastrado':'itens cadastrados'} no estoque.`);
+  showToast(`${newItems.length} ${newItems.length===1?'item cadastrado':'itens cadastrados'} no estoque.`);
 
   document.getElementById('s_descricao').value = '';
-  document.getElementById('s_categoria').value = '';
   document.getElementById('s_estado').value = 'Novo';
   document.getElementById('s_data').value = '';
   document.getElementById('s_obs').value = '';
+  document.getElementById('s_ca').value = '';
   document.getElementById('s_quantidade').value = 1;
   renderPatrimonioInputs();
   renderStockTable();
@@ -1372,8 +1511,8 @@ function renderStockTable(){
   const rows = list.map(it=>`
     <tr>
       <td>${escapeHtml(it.descricao)}</td>
-      <td class="code">${escapeHtml(it.numero)}</td>
-      <td>${escapeHtml(it.categoria||'—')}</td>
+      <td class="code">${formatItemIdentifier(it)}</td>
+      <td><span class="badge ${categoryBadgeClass(it.categoria)}">${escapeHtml(it.categoria||'—')}</span></td>
       <td>${escapeHtml(it.estado||'—')}</td>
       <td class="code">${fmtDate(it.dataAquisicao)}</td>
       <td class="row-actions">
@@ -1383,7 +1522,7 @@ function renderStockTable(){
       </td>
     </tr>`).join('');
   wrap.innerHTML = `<table>
-    <thead><tr><th>Item</th><th>Nº patrimônio</th><th>Categoria</th><th>Estado</th><th>Entrada</th><th></th></tr></thead>
+    <thead><tr><th>Item</th><th>Identificação</th><th>Categoria</th><th>Estado</th><th>Entrada</th><th></th></tr></thead>
     <tbody>${rows}</tbody>
   </table>`;
 }
@@ -1424,7 +1563,7 @@ function renderItemsSearch(filter){
   const q = normalize(filter);
   let list = state.items.slice().sort((a,b)=>(b.dataEntrega||'').localeCompare(a.dataEntrega||''));
   if(q){
-    list = list.filter(it => [it.descricao,it.numero,it.categoria].some(f=>normalize(f).includes(q)));
+    list = list.filter(it => [it.descricao,it.numero,it.serial,it.ca,it.categoria].some(f=>normalize(f).includes(q)));
   }
   if(list.length===0){
     wrap.innerHTML = `<div class="empty-state">
@@ -1438,15 +1577,15 @@ function renderItemsSearch(filter){
     const badgeClass = it.status==='Devolvido' ? 'badge-devolvido' : (it.status==='Em estoque' ? 'badge-estoque' : 'badge-posse');
     return `<tr>
       <td>${escapeHtml(it.descricao)}</td>
-      <td class="code">${escapeHtml(it.numero)}</td>
-      <td>${escapeHtml(it.categoria||'—')}</td>
+      <td class="code">${formatItemIdentifier(it)}</td>
+      <td><span class="badge ${categoryBadgeClass(it.categoria)}">${escapeHtml(it.categoria||'—')}</span></td>
       <td><span class="badge ${badgeClass}">${it.status||'Em posse'}</span></td>
       <td>${emp ? `<a class="name-link" onclick="openFicha('${emp.id}')">${escapeHtml(emp.nome)}</a>` : '<em>Em estoque</em>'}</td>
       <td class="code">${fmtDate(it.dataEntrega || it.dataAquisicao)}</td>
     </tr>`;
   }).join('');
   wrap.innerHTML = `<table>
-    <thead><tr><th>Item</th><th>Nº patrimônio</th><th>Categoria</th><th>Status</th><th>Colaborador</th><th>Entrega</th></tr></thead>
+    <thead><tr><th>Item</th><th>Identificação</th><th>Categoria</th><th>Status</th><th>Colaborador</th><th>Entrega</th></tr></thead>
     <tbody>${rows}</tbody>
   </table>`;
 }
@@ -1542,7 +1681,7 @@ function printFicha(id){
 
   const body = itens.map(it=>[
     it.descricao || '—',
-    it.numero || '—',
+    formatItemIdentifier(it),
     it.categoria || '—',
     it.estado || '—',
     fmtDate(it.dataEntrega),
@@ -1552,7 +1691,7 @@ function printFicha(id){
   doc.autoTable({
     startY: y,
     margin: { left: margin, right: margin },
-    head: [['Item','Nº patrimônio','Categoria','Estado','Entrega','Situação']],
+    head: [['Item','Identificação','Categoria','Estado','Entrega','Situação']],
     body: body.length ? body : [['Nenhum item registrado para este colaborador.', '', '', '', '', '']],
     theme: 'grid',
     styles: { fontSize: 8.5, cellPadding: 2.6, textColor: [30,30,30], lineColor: [225,225,225] },
