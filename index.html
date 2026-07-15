@@ -2075,7 +2075,7 @@ function printEpiForm(id){
   doc.autoTable({
     startY: y,
     margin: { left: margin, right: margin },
-    head: [['Código','Descrição da Ferramenta - Marca','Quantidade','CA','Data da\nEntrega','Assinatura do\nTrabalhador','Data da\nDevolução','Quantidade\nDevolvida','Assinatura do\nAlmoxarifado']],
+    head: [['Código','Descrição da Ferramenta - Marca','Qtd.','CA','Data da\nEntrega','Assinatura do\nTrabalhador','Data da\nDevolução','Qnt\nDevolvida','Assinatura do\nAlmoxarifado']],
     body,
     theme: 'grid',
     styles: { fontSize: 8, cellPadding: 3, textColor:[30,30,30], lineColor:[160,160,160], lineWidth:0.2, valign:'middle' },
@@ -2091,7 +2091,14 @@ function printEpiForm(id){
       7:{cellWidth:24, halign:'center'},
       8:{cellWidth:38}
     },
-    tableWidth: pageWidth - margin*2
+    tableWidth: pageWidth - margin*2,
+    didDrawCell: function(data){
+      if(data.column.index === 5){
+        doc.setDrawColor(0,0,0);
+        doc.setLineWidth(0.9);
+        doc.line(data.cell.x + data.cell.width, data.cell.y, data.cell.x + data.cell.width, data.cell.y + data.cell.height);
+      }
+    }
   });
 
   let finalY = doc.lastAutoTable.finalY + 12;
