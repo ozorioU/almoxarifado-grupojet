@@ -1248,6 +1248,7 @@ function renderFicha(id){
       <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap;">
         <button class="btn btn-primary" onclick="openItemForm('${emp.id}')">+ Adicionar item</button>
         <button class="btn btn-outline" onclick="printFicha('${emp.id}')">🖨 Baixar PDF da ficha</button>
+        <button class="btn btn-outline" onclick="printEpiForm('${emp.id}')">📋 Ficha de EPI (PDF)</button>
         <button class="btn btn-outline" onclick="openEmployeeForm('${emp.id}')">Editar dados</button>
       </div>
 
@@ -1715,6 +1716,122 @@ function printFicha(id){
   const safeName = normalize(emp.nome).replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'') || 'colaborador';
   doc.save(`ficha_${safeName}.pdf`);
   showToast('PDF gerado com sucesso.');
+}
+
+function printEpiForm(id){
+  const emp = state.employees.find(e=>e.id===id);
+  if(!emp) return;
+
+  if(typeof window.jspdf === 'undefined'){
+    showToast('Não foi possível carregar o gerador de PDF (verifique sua conexão com a internet e tente novamente).');
+    return;
+  }
+
+  const itensEpi = state.items
+    .filter(i=>i.employeeId===id && i.categoria==='EPI')
+    .sort((a,b)=>(a.dataEntrega||'').localeCompare(b.dataEntrega||''));
+
+  if(itensEpi.length===0){
+    showToast('Este colaborador não possui itens de EPI registrados.');
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:'mm', format:'a4', orientation:'landscape' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 12;
+  let y = 15;
+
+  try{ doc.addImage(LOGO_SRC, 'PNG', pageWidth-margin-30, y-7, 30, 8.3); }catch(e){}
+
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(16);
+  doc.setTextColor(20,20,20);
+  doc.text('FICHA PARA CONTROLE DE EPI', margin, y);
+  y += 8;
+
+  doc.setDrawColor(180,180,180);
+  doc.setLineWidth(0.3);
+  doc.line(margin, y, pageWidth-margin, y);
+  y += 7;
+
+  doc.setFontSize(9);
+  doc.setFont('helvetica','bold'); doc.text('Nome:', margin, y);
+  doc.setFont('helvetica','normal'); doc.text(emp.nome, margin+16, y);
+  doc.setFont('helvetica','bold'); doc.text('Função:', margin+130, y);
+  doc.setFont('helvetica','normal'); doc.text(emp.cargo||'—', margin+148, y);
+  doc.setFont('helvetica','bold'); doc.text('Setor:', margin+215, y);
+  doc.setFont('helvetica','normal'); doc.text(emp.setor||'—', margin+230, y);
+  y += 7;
+
+  doc.setFont('helvetica','bold'); doc.text('Local:', margin, y);
+  doc.setFont('helvetica','normal'); doc.text(emp.filial||'—', margin+16, y);
+  doc.setFont('helvetica','bold'); doc.text('Matrícula:', margin+130, y);
+  doc.setFont('helvetica','normal'); doc.text(emp.matricula||'—', margin+148, y);
+  doc.setFont('helvetica','bold'); doc.text('Data:', margin+215, y);
+  doc.setFont('helvetica','normal'); doc.text(fmtDate(todayStr()), margin+230, y);
+  y += 9;
+
+  const declaracao = 'Declaro ter recebido gratuitamente da empresa Grupo Jet o(s) equipamento(s) de proteção individual (EPI) abaixo relacionado(s), em conformidade com a Norma Regulamentadora NR-06. Comprometo-me a utilizá-lo(s) e conservá-lo(s) adequadamente, respondendo pela perda, extravio ou má utilização do material, na forma prevista no parágrafo 1º do Art. 462 da Consolidação das Leis do Trabalho (CLT), inclusive no que couber a título de indenização por desconto em folha de pagamento. OBS.: um novo EPI somente será fornecido mediante a devolução do usado.';
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(8);
+  doc.setTextColor(70,70,70);
+  const declLines = doc.splitTextToSize(declaracao, pageWidth - margin*2);
+  doc.text(declLines, margin, y);
+  y += declLines.length * 3.6 + 7;
+
+  doc.setDrawColor(0);
+  doc.setLineWidth(0.2);
+  doc.line(margin, y, margin+90, y);
+  doc.line(margin+110, y, margin+150, y);
+  doc.setFontSize(7.5);
+  doc.setTextColor(60,60,60);
+  doc.text('Assinatura do Trabalhador', margin, y+4);
+  doc.text('Rubrica', margin+110, y+4);
+  y += 12;
+
+  const body = itensEpi.map(it => [
+    '1',
+    it.descricao || '—',
+    it.ca || '—',
+    fmtDate(it.dataEntrega),
+    '',
+    it.status==='Devolvido' ? fmtDate(it.dataDevolucao) : '',
+    it.status==='Devolvido' ? '1' : '',
+    ''
+  ]);
+
+  doc.autoTable({
+    startY: y,
+    margin: { left: margin, right: margin },
+    head: [['Quant.','Descrição do EPI','CA','Data\nEntrega','Assinatura do Trabalhador','Data\nDevolução','Quant.','Assinatura Almoxarifado']],
+    body,
+    theme: 'grid',
+    styles: { fontSize: 8, cellPadding: 3, textColor:[30,30,30], lineColor:[160,160,160], lineWidth:0.2, valign:'middle' },
+    headStyles: { fillColor: [240,240,240], textColor:[20,20,20], fontStyle:'bold', fontSize:7.5, halign:'center' },
+    columnStyles: {
+      0:{cellWidth:14, halign:'center'},
+      1:{cellWidth:58},
+      2:{cellWidth:20, halign:'center'},
+      3:{cellWidth:22, halign:'center'},
+      4:{cellWidth:52},
+      5:{cellWidth:24, halign:'center'},
+      6:{cellWidth:14, halign:'center'},
+      7:{cellWidth:52}
+    }
+  });
+
+  let finalY = doc.lastAutoTable.finalY + 12;
+  if(finalY > pageHeight - 16){ doc.addPage('a4','landscape'); finalY = 20; }
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(9);
+  doc.setTextColor(20,20,20);
+  doc.text(`Local: ${emp.filial || '—'}        Data: ${fmtDate(todayStr())}`, margin, finalY);
+
+  const safeName = normalize(emp.nome).replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'') || 'colaborador';
+  doc.save(`ficha_epi_${safeName}.pdf`);
+  showToast('Ficha de EPI gerada.');
 }
 
 
