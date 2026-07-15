@@ -434,6 +434,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
         <span>Buscar item</span>
       </div>
+      <div class="nav-item" data-view="vale" onclick="switchView('vale')">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M9 15h6"/><path d="M9 11h2"/></svg>
+        <span>Emitir vale</span>
+      </div>
       <div class="nav-section-label" id="adminSectionLabel" style="display:none;">Administração</div>
       <div class="nav-item" id="navUsers" data-view="users" onclick="switchView('users')" style="display:none;">
         <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
@@ -457,48 +461,21 @@
 
       <!-- HOME -->
       <div class="view active" id="view-home">
-        <div class="welcome-banner">
-          <h3 id="welcomeTitle">Olá! 👋</h3>
-          <p id="welcomeText">Carregando informações do almoxarifado...</p>
-        </div>
-
-        <div class="grid-2">
-          <div class="card">
-            <div class="card-head">
-              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg>
-              <h3>Resumo do almoxarifado</h3>
-            </div>
-            <div class="card-body" id="homeStatusRows"></div>
+        <div style="max-width:620px;margin:48px auto 0;">
+          <div style="text-align:center;margin-bottom:22px;">
+            <h2 style="font-size:22px;font-weight:800;margin-bottom:6px;">O que você procura?</h2>
+            <p style="color:var(--ink-soft);font-size:13.5px;margin:0;">Busque um colaborador para ver a ficha completa, ou um item para ver quem está com ele.</p>
           </div>
-
-          <div>
-            <div class="card">
-              <div class="card-body" style="padding-top:16px;">
-                <div class="toggle-row">
-                  <button class="toggle-btn active" id="toggle-pessoa" onclick="setHomeSearchMode('pessoa')">Por colaborador</button>
-                  <button class="toggle-btn" id="toggle-item" onclick="setHomeSearchMode('item')">Por item</button>
-                </div>
-                <div class="search-row">
-                  <input type="text" id="homeSearchInput" placeholder="Digite nome, matrícula, cargo..." onkeydown="if(event.key==='Enter') runHomeSearch()">
-                  <button class="btn btn-primary" onclick="runHomeSearch()">Buscar</button>
-                </div>
-              </div>
+          <div class="card" style="padding:22px 24px;">
+            <div class="toggle-row" style="justify-content:center;margin-bottom:14px;">
+              <button class="toggle-btn active" id="toggle-pessoa" onclick="setHomeSearchMode('pessoa')">Por colaborador</button>
+              <button class="toggle-btn" id="toggle-item" onclick="setHomeSearchMode('item')">Por item</button>
             </div>
-            <div class="card">
-              <div class="card-body" style="padding-top:16px;padding-bottom:16px;display:flex;gap:10px;flex-wrap:wrap;">
-                <button class="btn btn-primary" onclick="openEmployeeForm()">+ Novo colaborador</button>
-                <button class="btn btn-outline" onclick="switchView('employees')">Ver colaboradores</button>
-              </div>
+            <div class="form-field full" style="position:relative;margin-bottom:0;">
+              <input type="text" id="homeSearchInput" placeholder="Digite nome, matrícula, cargo..." oninput="filterHomeSearchResults()" onkeydown="if(event.key==='Enter') runHomeSearch()" autocomplete="off">
+              <div id="homeSearchResults" style="display:none;position:absolute;z-index:20;background:#fff;border:1px solid var(--border);border-radius:8px;margin-top:6px;max-height:300px;overflow-y:auto;width:100%;box-shadow:0 10px 30px rgba(0,0,0,0.12);"></div>
             </div>
           </div>
-        </div>
-
-        <div class="highlight-banner">
-          <div>
-            <div class="hb-label">Itens atualmente em posse</div>
-            <div class="hb-sub" id="hbSub">de um total de itens cadastrados</div>
-          </div>
-          <div class="hb-value" id="hbValue">0</div>
         </div>
       </div>
 
@@ -640,6 +617,104 @@
         </div>
         <div class="card" style="padding:0;overflow-x:auto;">
           <div id="usersTableWrap"></div>
+        </div>
+      </div>
+
+      <!-- EMITIR VALE -->
+      <div class="view" id="view-vale">
+        <div class="page-head">
+          <div>
+            <h2>Emitir vale</h2>
+            <p>Gere o termo de responsabilidade e autorização de desconto quando um colaborador perder ou danificar um item.</p>
+          </div>
+        </div>
+
+        <!-- ETAPA 1: buscar colaborador -->
+        <div class="card" id="valeStep1">
+          <div class="card-head">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+            <h3>1. Buscar colaborador</h3>
+          </div>
+          <div class="card-body" style="padding-top:16px;position:relative;">
+            <div class="form-field full" style="margin-bottom:0;">
+              <label>Nome ou matrícula</label>
+              <input type="text" id="vale_emp_search" placeholder="Digite para buscar..." oninput="filterValeEmployeeResults()" autocomplete="off">
+              <div id="vale_emp_results" style="display:none;position:absolute;z-index:20;background:#fff;border:1px solid var(--border);border-radius:8px;margin-top:4px;max-height:260px;overflow-y:auto;width:calc(100% - 48px);box-shadow:0 10px 30px rgba(0,0,0,0.1);"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ETAPA 2: selecionar itens -->
+        <div id="valeStep2" style="display:none;">
+          <div class="card">
+            <div class="card-head">
+              <h3 id="valeEmpSummary" style="font-size:14px;"></h3>
+              <button class="btn btn-outline btn-sm" style="margin-left:auto;" onclick="resetValeFlow()">Trocar colaborador</button>
+            </div>
+            <div class="card-body" id="valeItemsChecklist" style="padding-top:8px;"></div>
+            <div class="card-body" style="padding-top:0;padding-bottom:18px;">
+              <button class="btn btn-primary" id="valeAdvanceBtn" onclick="advanceValeStep3()" disabled>Avançar →</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ETAPA 3: valores e detalhes -->
+        <div id="valeStep3" style="display:none;">
+          <div class="card">
+            <div class="card-head"><h3 style="font-size:14px;">Itens selecionados — quantidade e valor</h3></div>
+            <div class="card-body" id="valeItemsValueForm" style="padding-top:6px;"></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3 style="font-size:14px;">Detalhes da ocorrência e do desconto</h3></div>
+            <div class="card-body" style="padding-top:16px;">
+              <div class="form-grid">
+                <div class="form-field">
+                  <label>Data da ocorrência</label>
+                  <input type="date" id="vale_data_ocorrencia">
+                </div>
+                <div class="form-field">
+                  <label>Local da ocorrência</label>
+                  <input type="text" id="vale_local_ocorrencia" placeholder="Ex.: Brasília - DF">
+                </div>
+                <div class="form-field full">
+                  <label>Descrição objetiva da ocorrência</label>
+                  <textarea id="vale_descricao_ocorrencia" rows="2" placeholder="Descreva como ocorreu a perda/dano e as providências adotadas"></textarea>
+                </div>
+                <div class="form-field full">
+                  <label>Conduta atribuída ao colaborador</label>
+                  <textarea id="vale_conduta" rows="2" placeholder="Descreva concretamente a conduta culposa ou dolosa (evite termos genéricos)"></textarea>
+                </div>
+                <div class="form-field">
+                  <label>Número de parcelas</label>
+                  <input type="number" id="vale_parcelas" min="1" value="1" oninput="recalcValeTotal()">
+                </div>
+                <div class="form-field">
+                  <label>Valor de cada parcela (R$)</label>
+                  <input type="text" id="vale_valor_parcela" placeholder="0,00">
+                  <div class="code" id="vale_parcela_hint" style="font-size:11.5px;color:var(--ink-faint);margin-top:4px;"></div>
+                </div>
+                <div class="form-field">
+                  <label>Mês/ano de início do desconto</label>
+                  <input type="text" id="vale_mes_inicio" placeholder="Ex.: Agosto/2026">
+                </div>
+                <div class="form-field">
+                  <label>Cidade/UF (para a data de assinatura)</label>
+                  <input type="text" id="vale_cidade_uf" placeholder="Ex.: Brasília/DF">
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="highlight-banner">
+            <div>
+              <div class="hb-label">Prejuízo líquido total</div>
+              <div class="hb-sub">Soma de todos os itens selecionados</div>
+            </div>
+            <div class="hb-value" id="valeTotalDisplay">R$ 0,00</div>
+          </div>
+          <div style="display:flex;gap:10px;margin-bottom:30px;">
+            <button class="btn btn-outline" onclick="backToValeStep2()">← Voltar</button>
+            <button class="btn btn-primary" onclick="generateValePdf()">📄 Gerar termo (PDF)</button>
+          </div>
         </div>
       </div>
 
@@ -871,7 +946,8 @@ let state = {
   loaded: false,
   currentUser: null,
   editingUserId: null,
-  selectedEpiCatalogId: null
+  selectedEpiCatalogId: null,
+  valeEmployeeId: null
 };
 
 const ICONS = {
@@ -1032,7 +1108,7 @@ function showToast(msg){
   setTimeout(()=>t.classList.remove('show'), 2200);
 }
 
-const PAGE_TITLES = { home:'Início', employees:'Colaboradores', ficha:'Ficha do colaborador', stock:'Cadastrar itens', items:'Buscar item', users:'Usuários' };
+const PAGE_TITLES = { home:'Início', employees:'Colaboradores', ficha:'Ficha do colaborador', stock:'Cadastrar itens', items:'Buscar item', users:'Usuários', vale:'Emitir vale' };
 
 // ---------- view switching ----------
 async function switchView(name){
@@ -1053,6 +1129,7 @@ async function switchView(name){
   if(name==='employees') renderEmployeesList();
   if(name==='stock'){ updateStockCategoryFields(); renderStockTable(); renderEpiCatalogTable(); }
   if(name==='items') renderItemsSearch();
+  if(name==='vale'){ if(state.valeEmployeeId) renderValeItemsChecklist(); }
 }
 
 // ---------- HOME ----------
@@ -1061,6 +1138,54 @@ function setHomeSearchMode(mode){
   document.getElementById('toggle-pessoa').classList.toggle('active', mode==='pessoa');
   document.getElementById('toggle-item').classList.toggle('active', mode==='item');
   document.getElementById('homeSearchInput').placeholder = mode==='pessoa' ? 'Digite nome, matrícula, cargo...' : 'Ex.: notebook, NP-0234, monitor...';
+  document.getElementById('homeSearchInput').value = '';
+  document.getElementById('homeSearchResults').style.display = 'none';
+  document.getElementById('homeSearchResults').innerHTML = '';
+}
+function filterHomeSearchResults(){
+  const q = normalize(document.getElementById('homeSearchInput').value);
+  const resultsEl = document.getElementById('homeSearchResults');
+  if(!q){ resultsEl.style.display = 'none'; resultsEl.innerHTML = ''; return; }
+
+  if(state.homeSearchMode === 'pessoa'){
+    const matches = state.employees.filter(e =>
+      [e.nome,e.matricula,e.cpf,e.cargo,e.setor,e.filial].some(f=>normalize(f).includes(q))
+    ).slice(0,8);
+    if(matches.length===0){
+      resultsEl.innerHTML = `<div style="padding:12px 14px;font-size:13px;color:var(--ink-faint);">Nenhum colaborador encontrado.</div>`;
+    }else{
+      resultsEl.innerHTML = matches.map(e=>`
+        <div style="padding:10px 14px;font-size:13.5px;cursor:pointer;border-bottom:1px solid var(--border);" onclick="openFicha('${e.id}')" onmouseover="this.style.background='#FAFAFA'" onmouseout="this.style.background='#fff'">
+          <strong>${escapeHtml(e.nome)}</strong> <span class="code">— ${escapeHtml(e.matricula)}</span>
+          <div style="font-size:12px;color:var(--ink-soft);">${escapeHtml(e.cargo||'')}${e.setor ? ' · '+escapeHtml(e.setor) : ''}</div>
+        </div>`).join('');
+    }
+  }else{
+    const matches = state.items.filter(it =>
+      [it.descricao,it.numero,it.serial,it.ca,it.codigo,it.categoria].some(f=>normalize(f).includes(q))
+    ).slice(0,8);
+    if(matches.length===0){
+      resultsEl.innerHTML = `<div style="padding:12px 14px;font-size:13px;color:var(--ink-faint);">Nenhum item encontrado.</div>`;
+    }else{
+      resultsEl.innerHTML = matches.map(it=>{
+        const emp = state.employees.find(e=>e.id===it.employeeId);
+        return `<div style="padding:10px 14px;font-size:13.5px;cursor:pointer;border-bottom:1px solid var(--border);" onclick="goToItemFromHome('${it.id}')" onmouseover="this.style.background='#FAFAFA'" onmouseout="this.style.background='#fff'">
+          <span class="badge ${categoryBadgeClass(it.categoria)}" style="margin-right:6px;">${escapeHtml(it.categoria||'—')}</span>
+          <strong>${escapeHtml(it.descricao)}</strong>
+          <div style="font-size:12px;color:var(--ink-soft);">${formatItemIdentifier(it)} — ${emp ? escapeHtml(emp.nome) : (it.status==='Em estoque' ? 'Em estoque' : 'sem colaborador')}</div>
+        </div>`;
+      }).join('');
+    }
+  }
+  resultsEl.style.display = 'block';
+}
+function goToItemFromHome(itemId){
+  const it = state.items.find(i=>i.id===itemId);
+  if(!it) return;
+  switchView('items').then(()=>{
+    document.getElementById('itemSearchInput').value = it.numero || it.codigo || it.descricao;
+    renderItemsSearch(it.numero || it.codigo || it.descricao);
+  });
 }
 function runHomeSearch(){
   const q = document.getElementById('homeSearchInput').value;
@@ -1075,34 +1200,7 @@ function runHomeSearch(){
   }
 }
 function renderHome(){
-  const ativos = state.employees.filter(e=>e.status!=='Inativo').length;
-  const inativos = state.employees.filter(e=>e.status==='Inativo').length;
-  const emPosse = state.items.filter(i=>i.status!=='Devolvido' && i.status!=='Em estoque').length;
-  const emEstoque = state.items.filter(i=>i.status==='Em estoque').length;
-  const devolvidos = state.items.filter(i=>i.status==='Devolvido').length;
-  const total = state.items.length;
-
-  document.getElementById('welcomeTitle').textContent = 'Olá! 👋';
-  document.getElementById('welcomeText').textContent = state.employees.length===0
-    ? 'Ainda não há colaboradores cadastrados. Cadastre o primeiro para começar a controlar o patrimônio.'
-    : `Você tem ${ativos} colaborador(es) ativo(s), ${emPosse} item(ns) em posse e ${emEstoque} item(ns) disponível(is) em estoque.`;
-
-  const rows = [
-    {label:'Colaboradores ativos', value: ativos, icon: ICONS.users, muted:false},
-    {label:'Colaboradores inativos', value: inativos, icon: ICONS.userOff, muted:true},
-    {label:'Itens em posse', value: emPosse, icon: ICONS.box, muted:false},
-    {label:'Itens em estoque', value: emEstoque, icon: ICONS.box, muted:false},
-    {label:'Itens devolvidos', value: devolvidos, icon: ICONS.undo, muted:true},
-    {label:'Total de itens cadastrados', value: total, icon: ICONS.total, muted:false},
-  ];
-  document.getElementById('homeStatusRows').innerHTML = rows.map(r=>`
-    <div class="status-row">
-      <div class="label">${r.icon}<span>${r.label}</span></div>
-      <div class="value ${r.muted?'muted':''}">${r.value}</div>
-    </div>`).join('');
-
-  document.getElementById('hbValue').textContent = emPosse;
-  document.getElementById('hbSub').textContent = `de um total de ${total} item(ns) cadastrado(s)`;
+  // tela inicial simplificada: nada para renderizar alem da busca
 }
 
 // ---------- EMPLOYEES LIST ----------
@@ -1882,6 +1980,301 @@ function resolveConfirm(val){
   if(_confirmResolve){ _confirmResolve(val); _confirmResolve = null; }
 }
 
+// ---------- EMITIR VALE ----------
+function formatBRL(num){
+  return 'R$ ' + (num||0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+function parseBRL(str){
+  if(!str) return 0;
+  let s = String(str).trim().replace(/[R$\s]/g,'');
+  if(s.includes(',')){
+    s = s.replace(/\./g,'').replace(',', '.');
+  }
+  const val = parseFloat(s);
+  return isNaN(val) ? 0 : val;
+}
+function filterValeEmployeeResults(){
+  const q = normalize(document.getElementById('vale_emp_search').value);
+  const resultsEl = document.getElementById('vale_emp_results');
+  if(!q){ resultsEl.style.display = 'none'; resultsEl.innerHTML = ''; return; }
+  const matches = state.employees.filter(e => [e.nome, e.matricula].some(f=>normalize(f).includes(q))).slice(0,8);
+  if(matches.length===0){
+    resultsEl.innerHTML = `<div style="padding:12px 14px;font-size:13px;color:var(--ink-faint);">Nenhum colaborador encontrado.</div>`;
+  }else{
+    resultsEl.innerHTML = matches.map(e=>`
+      <div style="padding:10px 14px;font-size:13.5px;cursor:pointer;border-bottom:1px solid var(--border);" onclick="selectValeEmployee('${e.id}')" onmouseover="this.style.background='#FAFAFA'" onmouseout="this.style.background='#fff'">
+        <strong>${escapeHtml(e.nome)}</strong> <span class="code">— ${escapeHtml(e.matricula)}</span>
+        <div style="font-size:12px;color:var(--ink-soft);">${escapeHtml(e.cargo||'')}</div>
+      </div>`).join('');
+  }
+  resultsEl.style.display = 'block';
+}
+function selectValeEmployee(id){
+  state.valeEmployeeId = id;
+  document.getElementById('vale_emp_search').value = '';
+  document.getElementById('vale_emp_results').style.display = 'none';
+  document.getElementById('vale_emp_results').innerHTML = '';
+  document.getElementById('valeStep1').style.display = 'none';
+  document.getElementById('valeStep2').style.display = 'block';
+  document.getElementById('valeStep3').style.display = 'none';
+  renderValeItemsChecklist();
+}
+function resetValeFlow(){
+  state.valeEmployeeId = null;
+  document.getElementById('valeStep1').style.display = 'block';
+  document.getElementById('valeStep2').style.display = 'none';
+  document.getElementById('valeStep3').style.display = 'none';
+  document.getElementById('vale_emp_search').value = '';
+}
+function renderValeItemsChecklist(){
+  const emp = state.employees.find(e=>e.id===state.valeEmployeeId);
+  if(!emp){ resetValeFlow(); return; }
+  document.getElementById('valeEmpSummary').textContent = `${emp.nome} — Mat. ${emp.matricula}`;
+  const itens = state.items.filter(i=>i.employeeId===emp.id && i.status==='Em posse');
+  const wrap = document.getElementById('valeItemsChecklist');
+  if(itens.length===0){
+    wrap.innerHTML = `<div class="empty-state"><div class="icon">📦</div><p>Este colaborador não possui itens em posse no momento.</p></div>`;
+    document.getElementById('valeAdvanceBtn').disabled = true;
+    return;
+  }
+  wrap.innerHTML = itens.map(it=>`
+    <label style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--border);cursor:pointer;">
+      <input type="checkbox" class="vale-check" value="${it.id}" onchange="updateValeAdvanceState()" style="width:auto;flex-shrink:0;">
+      <span class="badge ${categoryBadgeClass(it.categoria)}">${escapeHtml(it.categoria||'—')}</span>
+      <span style="flex:1;"><strong>${escapeHtml(it.descricao)}</strong> <span class="code">${formatItemIdentifier(it)}</span></span>
+    </label>
+  `).join('');
+  updateValeAdvanceState();
+}
+function updateValeAdvanceState(){
+  const checked = document.querySelectorAll('.vale-check:checked').length;
+  document.getElementById('valeAdvanceBtn').disabled = checked===0;
+}
+function advanceValeStep3(){
+  const checked = [...document.querySelectorAll('.vale-check:checked')].map(cb=>cb.value);
+  if(checked.length===0) return;
+  const wrap = document.getElementById('valeItemsValueForm');
+  wrap.innerHTML = checked.map(id=>{
+    const it = state.items.find(i=>i.id===id);
+    return `
+    <div class="vale-item-row" data-item-id="${id}" style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px;align-items:end;padding:11px 0;border-bottom:1px solid var(--border);">
+      <div>
+        <div style="font-weight:700;font-size:13.5px;">${escapeHtml(it.descricao)}</div>
+        <div class="code" style="font-size:12px;color:var(--ink-soft);">${formatItemIdentifier(it)}</div>
+      </div>
+      <div class="form-field" style="margin-bottom:0;">
+        <label>Quantidade</label>
+        <input type="number" class="vale-qtd" min="1" value="1" oninput="recalcValeTotal()">
+      </div>
+      <div class="form-field" style="margin-bottom:0;">
+        <label>Valor unitário (R$)</label>
+        <input type="text" class="vale-valor" placeholder="0,00" oninput="recalcValeTotal()">
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('valeStep2').style.display = 'none';
+  document.getElementById('valeStep3').style.display = 'block';
+  document.getElementById('vale_data_ocorrencia').value = document.getElementById('vale_data_ocorrencia').value || todayStr();
+  recalcValeTotal();
+}
+function backToValeStep2(){
+  document.getElementById('valeStep3').style.display = 'none';
+  document.getElementById('valeStep2').style.display = 'block';
+}
+function recalcValeTotal(){
+  const rows = [...document.querySelectorAll('.vale-item-row')];
+  let total = 0;
+  rows.forEach(row=>{
+    const qty = parseFloat(row.querySelector('.vale-qtd').value) || 0;
+    const valor = parseBRL(row.querySelector('.vale-valor').value);
+    total += qty*valor;
+  });
+  document.getElementById('valeTotalDisplay').textContent = formatBRL(total);
+  const parcelas = parseInt(document.getElementById('vale_parcelas')?.value, 10) || 1;
+  const hint = document.getElementById('vale_parcela_hint');
+  if(hint){
+    hint.textContent = `Sugestão: ${formatBRL(total/parcelas)} por parcela (${parcelas}x)`;
+  }
+}
+function getValeSelectedRows(){
+  return [...document.querySelectorAll('.vale-item-row')].map(row=>{
+    const itemId = row.dataset.itemId;
+    const it = state.items.find(i=>i.id===itemId);
+    const qty = parseFloat(row.querySelector('.vale-qtd').value) || 1;
+    const valor = parseBRL(row.querySelector('.vale-valor').value);
+    return { it, qty, valor, subtotal: qty*valor };
+  });
+}
+function generateValePdf(){
+  const emp = state.employees.find(e=>e.id===state.valeEmployeeId);
+  if(!emp) return;
+  if(typeof window.jspdf === 'undefined'){
+    showToast('Não foi possível carregar o gerador de PDF (verifique sua conexão com a internet e tente novamente).');
+    return;
+  }
+  const selectedRows = getValeSelectedRows();
+  if(selectedRows.length===0){ showToast('Nenhum item selecionado.'); return; }
+  const total = selectedRows.reduce((s,r)=>s+r.subtotal, 0);
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:'mm', format:'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 16;
+  let y = 18;
+
+  function ensureSpace(need){
+    if(y + need > pageHeight - 18){ doc.addPage(); y = 18; }
+  }
+  function sectionTitle(text){
+    ensureSpace(10);
+    doc.setFont('helvetica','bold'); doc.setFontSize(10.5); doc.setTextColor(20,20,20);
+    doc.text(text, margin, y);
+    y += 5.5;
+  }
+  function paragraph(text, opts={}){
+    doc.setFont('helvetica', opts.bold ? 'bold' : 'normal');
+    doc.setFontSize(opts.size || 8.7);
+    const color = opts.color || [40,40,40];
+    doc.setTextColor(color[0], color[1], color[2]);
+    const lines = doc.splitTextToSize(text, pageWidth - margin*2);
+    ensureSpace(lines.length*3.8 + 2);
+    doc.text(lines, margin, y);
+    y += lines.length*3.8 + (opts.gap ?? 3);
+  }
+
+  doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(20,20,20);
+  doc.text('RD TELECOM LTDA.', margin, y);
+  doc.text('DOCUMENTO INTERNO', pageWidth-margin, y, {align:'right'});
+  y += 3;
+  doc.setDrawColor(0); doc.setLineWidth(0.4);
+  doc.line(margin, y, pageWidth-margin, y);
+  y += 9;
+
+  doc.setFont('helvetica','bold'); doc.setFontSize(12.5);
+  doc.text('TERMO DE RECONHECIMENTO DE RESPONSABILIDADE', pageWidth/2, y, {align:'center'});
+  y += 5.2;
+  doc.text('E AUTORIZAÇÃO EXPRESSA PARA DESCONTO SALARIAL', pageWidth/2, y, {align:'center'});
+  y += 10;
+
+  doc.setDrawColor(180); doc.setLineWidth(0.2);
+  const boxH = 22;
+  doc.rect(margin, y, pageWidth-margin*2, boxH);
+  doc.line(margin+34, y, margin+34, y+boxH);
+  doc.line(margin, y+boxH/2, pageWidth-margin, y+boxH/2);
+  doc.setFont('helvetica','bold'); doc.setFontSize(8);
+  doc.text('EMPREGADORA', margin+2, y+6);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8);
+  doc.text(doc.splitTextToSize('RD TELECOM LTDA., inscrita no CNPJ nº [inserir CNPJ], com sede em [endereço completo].', pageWidth-margin*2-38), margin+37, y+6);
+  doc.setFont('helvetica','bold');
+  doc.text('COLABORADOR(A)', margin+2, y+16);
+  doc.setFont('helvetica','normal');
+  doc.text(doc.splitTextToSize(`${emp.nome}, CPF nº ${emp.cpf||'[não informado]'}, matrícula nº ${emp.matricula}, cargo ${emp.cargo||'—'}.`, pageWidth-margin*2-38), margin+37, y+16);
+  y += boxH + 8;
+
+  paragraph('As partes acima identificadas formalizam o presente Termo, mediante as condições abaixo.');
+
+  sectionTitle('1. IDENTIFICAÇÃO DO(S) EQUIPAMENTO(S)');
+  doc.autoTable({
+    startY: y,
+    margin: { left: margin, right: margin },
+    head: [['Descrição','Identificação','Qtd.','Data de entrega']],
+    body: selectedRows.map(r=>[r.it.descricao, formatItemIdentifier(r.it), String(r.qty), fmtDate(r.it.dataEntrega)]),
+    theme: 'grid',
+    styles: { fontSize: 8.3, cellPadding: 2.6, textColor:[30,30,30], lineColor:[180,180,180], lineWidth:0.2 },
+    headStyles: { fillColor: [240,240,240], textColor:[20,20,20], fontStyle:'bold', fontSize:8 }
+  });
+  y = doc.lastAutoTable.finalY + 8;
+
+  sectionTitle('2. REGISTRO DA OCORRÊNCIA');
+  paragraph(`Data e local: ${fmtDate(document.getElementById('vale_data_ocorrencia').value)}, em ${document.getElementById('vale_local_ocorrencia').value || '[local não informado]'}.`);
+  paragraph(`Descrição objetiva: ${document.getElementById('vale_descricao_ocorrencia').value || '[não informado]'}`);
+  paragraph('2.1. Ciência e oportunidade de esclarecimento — O(A) COLABORADOR(A) declara que foi informado(a) sobre a ocorrência, teve acesso à identificação do(s) equipamento(s) e ao valor do prejuízo apresentado pela EMPREGADORA, bem como teve oportunidade de prestar esclarecimentos e apresentar documentos antes da assinatura deste Termo.');
+  paragraph(`2.2. Reconhecimento dos fatos — Após os esclarecimentos, o(a) COLABORADOR(A) reconhece que recebeu o(s) equipamento(s) acima identificado(s) sob sua guarda e responsabilidade e declara que a perda/extravio/dano decorreu da seguinte conduta a ele(a) atribuível: ${document.getElementById('vale_conduta').value || '[não informado]'}`);
+
+  sectionTitle('3. APURAÇÃO DO PREJUÍZO');
+  doc.autoTable({
+    startY: y,
+    margin: { left: margin, right: margin },
+    head: [['Item','Qtd.','Valor unitário','Subtotal']],
+    body: selectedRows.map(r=>[r.it.descricao, String(r.qty), formatBRL(r.valor), formatBRL(r.subtotal)]),
+    foot: [['','','PREJUÍZO LÍQUIDO APURADO', formatBRL(total)]],
+    theme: 'grid',
+    styles: { fontSize: 8.3, cellPadding: 2.6, lineColor:[180,180,180], lineWidth:0.2 },
+    headStyles: { fillColor: [240,240,240], fontStyle:'bold', fontSize:8 },
+    footStyles: { fillColor: [255,255,255], textColor:[0,0,0], fontStyle:'bold', fontSize:8.6 }
+  });
+  y = doc.lastAutoTable.finalY + 7;
+  paragraph('3.1. Critério — O valor acima corresponde exclusivamente ao prejuízo efetivo e documentalmente comprovado, sem multa, juros, taxa administrativa ou margem de lucro, considerando o estado de conservação, a depreciação, eventual recuperação do bem e cobertura securitária.');
+
+  sectionTitle('4. FUNDAMENTAÇÃO LEGAL');
+  paragraph('4.1. Artigo 462 da CLT — Nos termos do art. 462, caput e §1º, da Consolidação das Leis do Trabalho, os descontos salariais são, em regra, vedados, sendo lícito o desconto por dano causado pelo empregado quando a possibilidade tiver sido previamente acordada, no caso de conduta culposa, ou quando houver dolo do empregado.');
+  paragraph('4.2. Comprovação da responsabilidade — A autorização prevista neste Termo pressupõe a existência de prejuízo efetivo e a demonstração individualizada da conduta culposa ou dolosa do(a) COLABORADOR(A). O simples desaparecimento do bem ou a assinatura do termo de entrega, isoladamente, não substituem a apuração dos fatos.');
+  paragraph('4.3. Rescisão contratual — Caso haja término do contrato de trabalho antes da quitação integral, eventual compensação em verbas rescisórias deverá observar o art. 477, §5º, da CLT, as normas coletivas aplicáveis e os demais limites legais, não se autorizando retenção superior ao permitido por lei.');
+
+  sectionTitle('5. AUTORIZAÇÃO EXPRESSA DE DESCONTO');
+  paragraph(`5.1. Valor autorizado — Reconhecido o prejuízo líquido indicado na Cláusula 3, o(a) COLABORADOR(A), de forma expressa e consciente, autoriza a EMPREGADORA a descontar o total de ${formatBRL(total)} (___________________________________) em sua folha de pagamento.`);
+  const parcelas = document.getElementById('vale_parcelas').value || '1';
+  const valorParcela = document.getElementById('vale_valor_parcela').value || formatBRL(total).replace('R$ ','');
+  const mesInicio = document.getElementById('vale_mes_inicio').value || '[mês/ano]';
+  paragraph(`5.2. Forma de desconto — O desconto será realizado em ${parcelas} parcela(s) mensal(is), no valor de R$ ${valorParcela} cada, iniciando-se na competência ${mesInicio}, com identificação específica no demonstrativo de pagamento.`);
+  paragraph('5.3. Ausência de acréscimos — Não serão cobrados juros, multa, correção monetária, taxa administrativa ou qualquer valor além do prejuízo líquido comprovado, salvo novo acordo escrito mais favorável ao(à) COLABORADOR(A).');
+  paragraph('5.4. Devolução ou localização posterior — Se o equipamento for localizado, devolvido ou indenizado por terceiro/seguradora, a EMPREGADORA suspenderá os descontos ainda não realizados e restituirá eventual quantia cobrada a maior, após a apuração do valor efetivamente recuperado.');
+
+  sectionTitle('6. DECLARAÇÕES FINAIS');
+  paragraph('6.1. Leitura e voluntariedade — O(A) COLABORADOR(A) declara ter lido integralmente este Termo, compreendido seu conteúdo, recebido explicações e assinado sem coação, podendo solicitar uma via do documento e dos anexos.');
+  paragraph('6.2. Hipóteses não abrangidas — Este Termo não autoriza desconto por desgaste natural, defeito do equipamento, caso fortuito ou força maior, roubo/furto ocorrido apesar da adoção de cautelas razoáveis, falha de segurança ou de controle da EMPREGADORA, nem por prejuízo não comprovado.');
+  paragraph('6.3. Normas coletivas — Permanecem aplicáveis as disposições da convenção ou acordo coletivo da categoria, quando mais específicas ou favoráveis.');
+  paragraph('6.4. Quitação limitada — A presente autorização limita-se ao(s) equipamento(s) e ao valor expressamente identificados neste documento, não constituindo autorização genérica para descontos futuros nem renúncia a direitos trabalhistas indisponíveis.');
+
+  ensureSpace(14);
+  const cidadeUf = document.getElementById('vale_cidade_uf').value || '[Cidade/UF]';
+  paragraph(`${cidadeUf}, ____ de ________________ de ________.`, {gap:16});
+
+  ensureSpace(24);
+  doc.setDrawColor(0); doc.setLineWidth(0.3);
+  doc.line(margin, y, margin+95, y);
+  y += 5;
+  doc.setFont('helvetica','bold'); doc.setFontSize(9);
+  doc.text(emp.nome.toUpperCase(), margin, y);
+  y += 4.5;
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.3);
+  doc.text(`CPF nº ${emp.cpf||'—'} | Matrícula nº ${emp.matricula}`, margin, y);
+  y += 9;
+
+  paragraph('Declaro que recebi uma via deste Termo e de seus anexos.', {size:8, color:[100,100,100]});
+
+  sectionTitle('ANEXOS QUE DEVEM INTEGRAR O TERMO');
+  [
+    'Termo de entrega/cautela assinado pelo(a) colaborador(a)',
+    'Relatório de apuração da ocorrência e esclarecimentos do(a) colaborador(a)',
+    'Documento que comprove o valor do equipamento e o prejuízo líquido',
+    'Boletim de ocorrência, quando aplicável',
+    'Registros adicionais: fotografias, e-mails, mensagens, inventário ou outros'
+  ].forEach(txt=>{
+    ensureSpace(5.5);
+    doc.setDrawColor(60,60,60); doc.setLineWidth(0.3);
+    doc.rect(margin+2, y-3, 3, 3);
+    doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(40,40,40);
+    doc.text(txt, margin+8, y);
+    y += 5.2;
+  });
+
+  y += 3;
+  ensureSpace(18);
+  doc.setDrawColor(150); doc.setLineWidth(0.3);
+  const avisoLines = doc.splitTextToSize('ATENÇÃO: não utilize este Termo como cobrança automática. Antes do desconto, confirme a existência de previsão contratual ou normativa, a prova da culpa ou dolo, o prejuízo efetivo e as regras da convenção coletiva. Em caso de dúvida, submeta o caso ao jurídico/contabilidade trabalhista.', pageWidth-margin*2-6);
+  const boxH2 = avisoLines.length*3.6 + 6;
+  doc.rect(margin, y, pageWidth-margin*2, boxH2);
+  doc.setFont('helvetica','bold'); doc.setFontSize(7.6); doc.setTextColor(20,20,20);
+  doc.text(avisoLines, margin+3, y+4.5);
+  y += boxH2;
+
+  const safeName = normalize(emp.nome).replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'') || 'colaborador';
+  doc.save(`termo_responsabilidade_${safeName}.pdf`);
+  showToast('Termo gerado com sucesso.');
+}
+
 // ---------- PDF ----------
 const LOGO_SRC = document.querySelector('.sidebar-brand img').src;
 
@@ -1894,7 +2287,7 @@ function printFicha(id){
     return;
   }
 
-  const itens = state.items.filter(i=>i.employeeId===id);
+  const itens = state.items.filter(i=>i.employeeId===id && i.categoria!=='EPI');
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit:'mm', format:'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -2067,7 +2460,7 @@ function printEpiForm(id){
     it.ca || 'Sem CA',
     fmtDate(it.dataEntrega),
     '',
-    it.status==='Devolvido' ? fmtDate(it.dataDevolucao) : '',
+    it.status==='Devolvido' ? fmtDate(it.dataDevolucao) : '__ / __ / ____',
     it.status==='Devolvido' ? '1' : '',
     ''
   ]);
