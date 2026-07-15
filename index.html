@@ -1082,6 +1082,15 @@ function escapeHtml(str){
 function normalize(str){
   return String(str||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
 }
+function positionDropdown(inputEl, dropdownEl){
+  const rect = inputEl.getBoundingClientRect();
+  dropdownEl.style.position = 'fixed';
+  dropdownEl.style.left = rect.left + 'px';
+  dropdownEl.style.top = (rect.bottom + 4) + 'px';
+  dropdownEl.style.width = rect.width + 'px';
+  dropdownEl.style.zIndex = '500';
+  dropdownEl.style.marginTop = '0';
+}
 function fmtDate(d){
   if(!d) return '—';
   const parts = d.split('-');
@@ -1143,9 +1152,11 @@ function setHomeSearchMode(mode){
   document.getElementById('homeSearchResults').innerHTML = '';
 }
 function filterHomeSearchResults(){
-  const q = normalize(document.getElementById('homeSearchInput').value);
+  const inputEl = document.getElementById('homeSearchInput');
+  const q = normalize(inputEl.value);
   const resultsEl = document.getElementById('homeSearchResults');
   if(!q){ resultsEl.style.display = 'none'; resultsEl.innerHTML = ''; return; }
+  positionDropdown(inputEl, resultsEl);
 
   if(state.homeSearchMode === 'pessoa'){
     const matches = state.employees.filter(e =>
@@ -1453,9 +1464,11 @@ function updateItemCategoryFields(){
   document.getElementById('i_ca_wrap').style.display = isEpi ? 'block' : 'none';
 }
 function filterItemSearchResults(){
-  const q = normalize(document.getElementById('item_search').value);
+  const inputEl = document.getElementById('item_search');
+  const q = normalize(inputEl.value);
   const resultsEl = document.getElementById('item_search_results');
   if(!q){ resultsEl.style.display = 'none'; resultsEl.innerHTML = ''; return; }
+  positionDropdown(inputEl, resultsEl);
 
   const stockMatches = state.items.filter(it => it.status==='Em estoque' &&
     [it.descricao,it.numero,it.serial].some(f=>normalize(f).includes(q))
@@ -1994,9 +2007,11 @@ function parseBRL(str){
   return isNaN(val) ? 0 : val;
 }
 function filterValeEmployeeResults(){
-  const q = normalize(document.getElementById('vale_emp_search').value);
+  const inputEl = document.getElementById('vale_emp_search');
+  const q = normalize(inputEl.value);
   const resultsEl = document.getElementById('vale_emp_results');
   if(!q){ resultsEl.style.display = 'none'; resultsEl.innerHTML = ''; return; }
+  positionDropdown(inputEl, resultsEl);
   const matches = state.employees.filter(e => [e.nome, e.matricula].some(f=>normalize(f).includes(q))).slice(0,8);
   if(matches.length===0){
     resultsEl.innerHTML = `<div style="padding:12px 14px;font-size:13px;color:var(--ink-faint);">Nenhum colaborador encontrado.</div>`;
