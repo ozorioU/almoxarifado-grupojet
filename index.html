@@ -2081,16 +2081,17 @@ function printEpiForm(id){
     styles: { fontSize: 8, cellPadding: 3, textColor:[30,30,30], lineColor:[160,160,160], lineWidth:0.2, valign:'middle' },
     headStyles: { fillColor: [240,240,240], textColor:[20,20,20], fontStyle:'bold', fontSize:7.5, halign:'center' },
     columnStyles: {
-      0:{cellWidth:20, halign:'center'},
-      1:{cellWidth:46},
-      2:{cellWidth:18, halign:'center'},
-      3:{cellWidth:16, halign:'center'},
-      4:{cellWidth:19, halign:'center'},
-      5:{cellWidth:42},
-      6:{cellWidth:19, halign:'center'},
-      7:{cellWidth:19, halign:'center'},
-      8:{cellWidth:42}
-    }
+      0:{cellWidth:22, halign:'center'},
+      1:{cellWidth:55},
+      2:{cellWidth:20, halign:'center'},
+      3:{cellWidth:18, halign:'center'},
+      4:{cellWidth:22, halign:'center'},
+      5:{cellWidth:50},
+      6:{cellWidth:24, halign:'center'},
+      7:{cellWidth:24, halign:'center'},
+      8:{cellWidth:38}
+    },
+    tableWidth: pageWidth - margin*2
   });
 
   let finalY = doc.lastAutoTable.finalY + 12;
