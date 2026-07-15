@@ -530,7 +530,7 @@
         <div class="page-head">
           <div>
             <h2>Cadastrar itens</h2>
-            <p>Registre um item e a quantidade recebida — cada unidade recebe seu próprio número de patrimônio.</p>
+            <p>Equipamentos e Ferramental: registre a quantidade recebida, cada unidade recebe seu próprio patrimônio. EPI: cadastre o modelo uma única vez, sem limite de quantidade.</p>
           </div>
         </div>
 
@@ -543,10 +543,6 @@
             <div id="stockForm">
               <div class="form-grid">
                 <div class="form-field full">
-                  <label>Descrição do item *</label>
-                  <input type="text" id="s_descricao" required placeholder="Ex.: Monitor LG 24''">
-                </div>
-                <div class="form-field full">
                   <label>Categoria *</label>
                   <select id="s_categoria_tipo" onchange="updateStockCategoryFields()">
                     <option value="Equipamentos">Equipamentos</option>
@@ -554,7 +550,23 @@
                     <option value="Ferramental">Ferramental</option>
                   </select>
                 </div>
-                <div class="form-field">
+
+                <div class="form-field full" id="s_epi_hint" style="display:none;">
+                  <div class="login-tip" style="background:var(--blue-soft);border-left-color:var(--blue);color:#1e3a6e;margin:0;">
+                    Este EPI será cadastrado no catálogo e poderá ser entregue a qualquer colaborador, quantas vezes for necessário — não há controle de quantidade nem de patrimônio individual. O CA é informado depois, no momento da entrega para cada colaborador.
+                  </div>
+                </div>
+
+                <div class="form-field full">
+                  <label>Descrição do item *</label>
+                  <input type="text" id="s_descricao" required placeholder="Ex.: Capacete marca Vonix cor azul">
+                </div>
+                <div class="form-field full" id="s_codigo_wrap" style="display:none;">
+                  <label>Código do material *</label>
+                  <input type="text" id="s_codigo" placeholder="Ex.: CAP-VX-AZ">
+                </div>
+
+                <div class="form-field" id="s_estado_wrap">
                   <label>Estado</label>
                   <select id="s_estado">
                     <option>Novo</option>
@@ -563,20 +575,16 @@
                     <option>Danificado</option>
                   </select>
                 </div>
-                <div class="form-field">
+                <div class="form-field" id="s_quantidade_wrap">
                   <label>Quantidade *</label>
                   <input type="number" id="s_quantidade" min="1" max="300" value="1" required oninput="renderPatrimonioInputs()">
                 </div>
-                <div class="form-field">
+                <div class="form-field" id="s_data_wrap">
                   <label>Data de entrada</label>
                   <input type="date" id="s_data">
                 </div>
-                <div class="form-field full" id="s_ca_wrap" style="display:none;">
-                  <label>CA (Certificado de Aprovação) *</label>
-                  <input type="text" id="s_ca" placeholder="Ex.: 12345 — normalmente é o mesmo CA para todas as unidades deste lote">
-                </div>
                 <div class="form-field full" id="patrimonioInputsWrap"></div>
-                <div class="form-field full">
+                <div class="form-field full" id="s_obs_wrap">
                   <label>Observações</label>
                   <textarea id="s_obs" rows="2"></textarea>
                 </div>
@@ -594,6 +602,14 @@
         </div>
         <div class="card" style="padding:0;overflow-x:auto;">
           <div id="stockTableWrap"></div>
+        </div>
+
+        <div class="section-title">
+          <h3>Catálogo de EPI</h3>
+          <span class="count" id="epiCatalogCount"></span>
+        </div>
+        <div class="card" style="padding:0;overflow-x:auto;">
+          <div id="epiCatalogTableWrap"></div>
         </div>
       </div>
 
@@ -699,10 +715,6 @@
     <div id="itemForm">
       <div class="form-grid">
         <div class="form-field full">
-          <label>Descrição do item *</label>
-          <input type="text" id="i_descricao" required placeholder="Ex.: Notebook Dell Latitude 5420">
-        </div>
-        <div class="form-field full">
           <label>Categoria *</label>
           <select id="i_categoria_tipo" onchange="updateItemCategoryFields()">
             <option value="Equipamentos">Equipamentos</option>
@@ -710,6 +722,19 @@
             <option value="Ferramental">Ferramental</option>
           </select>
         </div>
+
+        <div class="form-field full" id="i_descricao_wrap">
+          <label>Descrição do item *</label>
+          <input type="text" id="i_descricao" placeholder="Ex.: Notebook Dell Latitude 5420">
+        </div>
+
+        <div class="form-field full" id="i_epi_search_wrap" style="display:none;position:relative;">
+          <label>Buscar EPI no catálogo — código ou nome *</label>
+          <input type="text" id="i_epi_search" placeholder="Ex.: CAP-VX-AZ ou capacete" oninput="filterEpiCatalogResults()" autocomplete="off">
+          <div id="i_epi_results" style="display:none;position:absolute;z-index:20;background:#fff;border:1px solid var(--border);border-radius:8px;margin-top:4px;max-height:180px;overflow-y:auto;width:100%;box-shadow:0 6px 20px rgba(0,0,0,0.1);"></div>
+          <div id="i_epi_selected" style="display:none;margin-top:8px;padding:9px 11px;background:var(--blue-soft);border-radius:6px;font-size:12.5px;color:#1e3a6e;"></div>
+        </div>
+
         <div class="form-field" id="i_numero_wrap">
           <label id="i_numero_label">Nº de patrimônio *</label>
           <input type="text" id="i_numero" placeholder="Ex.: NP-0234">
@@ -718,9 +743,13 @@
           <label>Número de série *</label>
           <input type="text" id="i_serial" placeholder="Ex.: SN-88213">
         </div>
-        <div class="form-field" id="i_ca_wrap" style="display:none;">
-          <label>CA (Certificado de Aprovação) *</label>
+        <div class="form-field full" id="i_ca_wrap" style="display:none;">
+          <label>CA (Certificado de Aprovação)</label>
           <input type="text" id="i_ca" placeholder="Ex.: 12345">
+          <label style="display:flex;align-items:center;gap:7px;margin-top:9px;font-weight:500;font-size:12.5px;color:var(--ink-soft);">
+            <input type="checkbox" id="i_sem_ca" onchange="toggleSemCa()" style="width:auto;">
+            Entregar sem CA (não possui / não informado)
+          </label>
         </div>
         <div class="form-field">
           <label>Estado</label>
@@ -816,6 +845,7 @@
 let state = {
   employees: [],
   items: [],
+  epiCatalog: [],
   currentEmployeeId: null,
   editingEmployeeId: null,
   editingItemId: null,
@@ -823,7 +853,8 @@ let state = {
   homeSearchMode: 'pessoa',
   loaded: false,
   currentUser: null,
-  editingUserId: null
+  editingUserId: null,
+  selectedEpiCatalogId: null
 };
 
 const ICONS = {
@@ -847,6 +878,7 @@ function itemToRow(it){
     numero: it.numero || null,
     serial: it.serial || null,
     ca: it.ca || null,
+    codigo: it.codigo || null,
     categoria: it.categoria || null,
     estado: it.estado || null,
     obs: it.obs || null,
@@ -864,6 +896,7 @@ function rowToItem(row){
     numero: row.numero,
     serial: row.serial,
     ca: row.ca,
+    codigo: row.codigo,
     categoria: row.categoria,
     estado: row.estado,
     obs: row.obs,
@@ -893,6 +926,11 @@ async function loadAll(){
     if(error) throw error;
     state.items = (data || []).map(rowToItem);
   }catch(e){ state.items = state.items || []; showToast('Erro ao carregar itens: ' + (e.message||e)); }
+  try{
+    const { data, error } = await sb.from('epi_catalog').select('*').order('descricao');
+    if(error) throw error;
+    state.epiCatalog = data || [];
+  }catch(e){ state.epiCatalog = state.epiCatalog || []; showToast('Erro ao carregar catálogo de EPI: ' + (e.message||e)); }
   state.loaded = true;
 }
 function checkStorageHealth(){
@@ -932,6 +970,14 @@ async function dbDeleteItem(id){
   const { error } = await sb.from('items').delete().eq('id', id);
   if(error) showToast('Erro ao excluir item no banco: ' + error.message);
 }
+async function dbInsertEpiCatalog(entry){
+  const { error } = await sb.from('epi_catalog').insert(entry);
+  if(error) showToast('Erro ao salvar no catálogo de EPI: ' + error.message);
+}
+async function dbDeleteEpiCatalog(id){
+  const { error } = await sb.from('epi_catalog').delete().eq('id', id);
+  if(error) showToast('Erro ao excluir do catálogo de EPI: ' + error.message);
+}
 
 // ---------- helpers ----------
 function uid(){ return 'id_' + Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
@@ -951,7 +997,10 @@ function fmtDate(d){
 }
 function formatItemIdentifier(it){
   if(it.categoria === 'Ferramental') return `Patrimônio ${it.numero||'—'} · Série ${it.serial||'—'}`;
-  if(it.categoria === 'EPI') return `CA ${it.ca||'—'}`;
+  if(it.categoria === 'EPI'){
+    const codigoPart = it.codigo ? `Código ${it.codigo} · ` : '';
+    return `${codigoPart}${it.ca ? 'CA '+it.ca : 'Sem CA'}`;
+  }
   return `Patrimônio ${it.numero||'—'}`;
 }
 function categoryBadgeClass(cat){
@@ -985,7 +1034,7 @@ async function switchView(name){
   await loadAll();
   if(name==='home') renderHome();
   if(name==='employees') renderEmployeesList();
-  if(name==='stock'){ renderPatrimonioInputs(); renderStockTable(); }
+  if(name==='stock'){ updateStockCategoryFields(); renderStockTable(); renderEpiCatalogTable(); }
   if(name==='items') renderItemsSearch();
 }
 
@@ -1281,13 +1330,53 @@ async function returnItem(itemId){
 }
 function updateItemCategoryFields(){
   const cat = document.getElementById('i_categoria_tipo').value;
+  const isEpi = cat === 'EPI';
+  document.getElementById('i_descricao_wrap').style.display = isEpi ? 'none' : 'block';
+  document.getElementById('i_epi_search_wrap').style.display = isEpi ? 'block' : 'none';
   document.getElementById('i_numero_wrap').style.display = (cat==='Equipamentos' || cat==='Ferramental') ? 'block' : 'none';
   document.getElementById('i_serial_wrap').style.display = (cat==='Ferramental') ? 'block' : 'none';
-  document.getElementById('i_ca_wrap').style.display = (cat==='EPI') ? 'block' : 'none';
+  document.getElementById('i_ca_wrap').style.display = isEpi ? 'block' : 'none';
+}
+function filterEpiCatalogResults(){
+  const q = normalize(document.getElementById('i_epi_search').value);
+  const resultsEl = document.getElementById('i_epi_results');
+  if(!q){ resultsEl.style.display = 'none'; resultsEl.innerHTML = ''; return; }
+  const matches = state.epiCatalog.filter(e => normalize(e.codigo).includes(q) || normalize(e.descricao).includes(q)).slice(0,8);
+  if(matches.length===0){
+    resultsEl.innerHTML = `<div style="padding:10px 12px;font-size:12.5px;color:var(--ink-faint);">Nenhum EPI encontrado no catálogo. Cadastre em "Cadastrar itens".</div>`;
+    resultsEl.style.display = 'block';
+    return;
+  }
+  resultsEl.innerHTML = matches.map(e=>`
+    <div style="padding:9px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--border);" onclick="selectEpiCatalog('${e.id}')" onmouseover="this.style.background='#FAFAFA'" onmouseout="this.style.background='#fff'">
+      <span class="code" style="font-weight:700;">${escapeHtml(e.codigo)}</span> — ${escapeHtml(e.descricao)}
+    </div>`).join('');
+  resultsEl.style.display = 'block';
+}
+function selectEpiCatalog(id){
+  const entry = state.epiCatalog.find(e=>e.id===id);
+  if(!entry) return;
+  state.selectedEpiCatalogId = id;
+  document.getElementById('i_epi_search').value = '';
+  document.getElementById('i_epi_results').style.display = 'none';
+  document.getElementById('i_epi_results').innerHTML = '';
+  document.getElementById('i_epi_selected').style.display = 'block';
+  document.getElementById('i_epi_selected').innerHTML = `Selecionado: <strong>${escapeHtml(entry.codigo)} — ${escapeHtml(entry.descricao)}</strong> <a onclick="clearEpiSelection()" style="cursor:pointer;color:var(--blue);margin-left:8px;text-decoration:underline;">Trocar</a>`;
+}
+function clearEpiSelection(){
+  state.selectedEpiCatalogId = null;
+  document.getElementById('i_epi_selected').style.display = 'none';
+  document.getElementById('i_epi_selected').innerHTML = '';
+}
+function toggleSemCa(){
+  const checked = document.getElementById('i_sem_ca').checked;
+  document.getElementById('i_ca').disabled = checked;
+  if(checked) document.getElementById('i_ca').value = '';
 }
 function openItemForm(employeeId, itemId){
   state.itemFormEmployeeId = employeeId;
   state.editingItemId = itemId || null;
+  state.selectedEpiCatalogId = null;
   const isEdit = !!itemId;
   document.getElementById('itemModalTitle').textContent = isEdit ? 'Editar item' : 'Adicionar item à ficha';
   const it = isEdit ? state.items.find(i=>i.id===itemId) : null;
@@ -1296,26 +1385,67 @@ function openItemForm(employeeId, itemId){
   document.getElementById('i_numero').value = it?.numero || '';
   document.getElementById('i_serial').value = it?.serial || '';
   document.getElementById('i_ca').value = it?.ca || '';
+  document.getElementById('i_ca').disabled = false;
+  document.getElementById('i_sem_ca').checked = false;
   document.getElementById('i_estado').value = it?.estado || 'Novo';
   document.getElementById('i_data').value = it?.dataEntrega || todayStr();
   document.getElementById('i_obs').value = it?.obs || '';
+  document.getElementById('i_epi_search').value = '';
+  document.getElementById('i_epi_results').style.display = 'none';
+  document.getElementById('i_epi_results').innerHTML = '';
+  document.getElementById('i_epi_selected').style.display = 'none';
+  document.getElementById('i_epi_selected').innerHTML = '';
+
+  if(isEdit && it && it.categoria === 'EPI'){
+    state.selectedEpiCatalogId = 'editing-existing';
+    document.getElementById('i_epi_selected').style.display = 'block';
+    document.getElementById('i_epi_selected').innerHTML = `Item atual: <strong>${it.codigo ? escapeHtml(it.codigo)+' — ' : ''}${escapeHtml(it.descricao)}</strong>`;
+    if(!it.ca) document.getElementById('i_sem_ca').checked = true;
+  }
+
   updateItemCategoryFields();
   document.getElementById('modalItem').classList.add('active');
 }
 async function saveItemForm(evt){
   evt.preventDefault();
   const categoria = document.getElementById('i_categoria_tipo').value;
+  const semCa = categoria==='EPI' && document.getElementById('i_sem_ca').checked;
+
+  let descricao, codigo = null;
+  if(categoria === 'EPI'){
+    if(state.editingItemId){
+      const existing = state.items.find(i=>i.id===state.editingItemId);
+      descricao = existing?.descricao || '';
+      codigo = existing?.codigo || null;
+    }else{
+      if(!state.selectedEpiCatalogId){
+        showToast('Busque e selecione um EPI do catálogo.');
+        return;
+      }
+      const entry = state.epiCatalog.find(e=>e.id===state.selectedEpiCatalogId);
+      if(!entry){
+        showToast('Selecione um EPI válido do catálogo.');
+        return;
+      }
+      descricao = entry.descricao;
+      codigo = entry.codigo;
+    }
+  }else{
+    descricao = document.getElementById('i_descricao').value.trim();
+  }
+
   const data = {
-    descricao: document.getElementById('i_descricao').value.trim(),
+    descricao,
     categoria,
+    codigo: categoria==='EPI' ? codigo : null,
     numero: (categoria==='Equipamentos' || categoria==='Ferramental') ? document.getElementById('i_numero').value.trim() : null,
     serial: categoria==='Ferramental' ? document.getElementById('i_serial').value.trim() : null,
-    ca: categoria==='EPI' ? document.getElementById('i_ca').value.trim() : null,
+    ca: categoria==='EPI' ? (semCa ? null : document.getElementById('i_ca').value.trim()) : null,
     estado: document.getElementById('i_estado').value,
     dataEntrega: document.getElementById('i_data').value,
     obs: document.getElementById('i_obs').value.trim()
   };
-  if(!data.descricao){
+  if(categoria !== 'EPI' && !data.descricao){
     showToast('Preencha a descrição do item.');
     return;
   }
@@ -1327,8 +1457,8 @@ async function saveItemForm(evt){
     showToast('Preencha o número de série.');
     return;
   }
-  if(categoria==='EPI' && !data.ca){
-    showToast('Preencha o CA (Certificado de Aprovação).');
+  if(categoria==='EPI' && !semCa && !data.ca){
+    showToast('Preencha o CA ou marque "Entregar sem CA".');
     return;
   }
   let isNew = false;
@@ -1367,25 +1497,31 @@ async function deleteItem(itemId){
 
 // ---------- STOCK (CADASTRAR ITENS) ----------
 function updateStockCategoryFields(){
+  const cat = document.getElementById('s_categoria_tipo').value;
+  const isEpi = cat === 'EPI';
+
+  document.getElementById('s_epi_hint').style.display = isEpi ? 'block' : 'none';
+  document.getElementById('s_codigo_wrap').style.display = isEpi ? 'block' : 'none';
+  document.getElementById('s_quantidade_wrap').style.display = isEpi ? 'none' : 'block';
+  document.getElementById('s_estado_wrap').style.display = isEpi ? 'none' : 'block';
+  document.getElementById('s_data_wrap').style.display = isEpi ? 'none' : 'block';
+  document.getElementById('s_obs_wrap').style.display = isEpi ? 'none' : 'block';
+  document.getElementById('patrimonioInputsWrap').style.display = isEpi ? 'none' : 'block';
+
+  if(isEpi){
+    document.getElementById('patrimonioInputsWrap').innerHTML = '';
+    document.getElementById('stockSubmitBtn').textContent = 'Cadastrar no catálogo de EPI';
+    return;
+  }
   renderPatrimonioInputs();
 }
 function renderPatrimonioInputs(){
   const cat = document.getElementById('s_categoria_tipo').value;
+  if(cat === 'EPI') return;
   const wrap = document.getElementById('patrimonioInputsWrap');
-  const caWrap = document.getElementById('s_ca_wrap');
   let qty = parseInt(document.getElementById('s_quantidade').value, 10);
   if(!qty || qty < 1) qty = 1;
   if(qty > 300) qty = 300;
-
-  if(cat === 'EPI'){
-    wrap.innerHTML = '';
-    wrap.style.display = 'none';
-    caWrap.style.display = 'block';
-    document.getElementById('stockSubmitBtn').textContent = `Cadastrar ${qty} ${qty===1?'item':'itens'}`;
-    return;
-  }
-  caWrap.style.display = 'none';
-  wrap.style.display = 'block';
 
   const existingNumero = [];
   const existingSerial = [];
@@ -1430,34 +1566,51 @@ function checkDuplicates(values, field){
   return false;
 }
 
+function resetStockForm(){
+  document.getElementById('s_descricao').value = '';
+  document.getElementById('s_codigo').value = '';
+  document.getElementById('s_estado').value = 'Novo';
+  document.getElementById('s_data').value = '';
+  document.getElementById('s_obs').value = '';
+  document.getElementById('s_quantidade').value = 1;
+}
+
 async function saveStockBatch(evt){
   evt.preventDefault();
   const descricao = document.getElementById('s_descricao').value.trim();
   const categoria = document.getElementById('s_categoria_tipo').value;
-  const estado = document.getElementById('s_estado').value;
-  const dataAquisicao = document.getElementById('s_data').value;
-  const obs = document.getElementById('s_obs').value.trim();
 
   if(!descricao){
     showToast('Preencha a descrição do item.');
     return;
   }
 
-  let newItems = [];
-
   if(categoria === 'EPI'){
-    const ca = document.getElementById('s_ca').value.trim();
-    if(!ca){
-      showToast('Preencha o CA (Certificado de Aprovação).');
+    const codigo = document.getElementById('s_codigo').value.trim();
+    if(!codigo){
+      showToast('Preencha o código do material.');
       return;
     }
-    let qty = parseInt(document.getElementById('s_quantidade').value, 10);
-    if(!qty || qty < 1) qty = 1;
-    newItems = Array.from({length: qty}, () => ({
-      id: uid(), descricao, categoria, estado, obs, ca, numero: null, serial: null,
-      dataAquisicao, employeeId: null, status: 'Em estoque'
-    }));
-  }else if(categoria === 'Ferramental'){
+    const existingCodes = new Set(state.epiCatalog.map(e=>normalize(e.codigo)));
+    if(existingCodes.has(normalize(codigo))){
+      showToast(`Já existe um EPI no catálogo com o código "${codigo}".`);
+      return;
+    }
+    const entry = { id: uid(), codigo, descricao };
+    state.epiCatalog.push(entry);
+    showToast('EPI cadastrado no catálogo.');
+    resetStockForm();
+    renderEpiCatalogTable();
+    dbInsertEpiCatalog(entry);
+    return;
+  }
+
+  const estado = document.getElementById('s_estado').value;
+  const dataAquisicao = document.getElementById('s_data').value;
+  const obs = document.getElementById('s_obs').value.trim();
+  let newItems = [];
+
+  if(categoria === 'Ferramental'){
     const numeros = [...document.querySelectorAll('#patrimonioInputsWrap input[data-patrimonio]')].map(inp => inp.value.trim());
     const seriais = [...document.querySelectorAll('#patrimonioInputsWrap input[data-serial]')].map(inp => inp.value.trim());
     if(numeros.some(n=>!n) || seriais.some(s=>!s)){
@@ -1484,18 +1637,46 @@ async function saveStockBatch(evt){
 
   state.items.push(...newItems);
   showToast(`${newItems.length} ${newItems.length===1?'item cadastrado':'itens cadastrados'} no estoque.`);
-
-  document.getElementById('s_descricao').value = '';
-  document.getElementById('s_estado').value = 'Novo';
-  document.getElementById('s_data').value = '';
-  document.getElementById('s_obs').value = '';
-  document.getElementById('s_ca').value = '';
-  document.getElementById('s_quantidade').value = 1;
+  resetStockForm();
   renderPatrimonioInputs();
   renderStockTable();
   renderHome();
   renderItemsSearch();
   dbInsertItems(newItems);
+}
+
+function renderEpiCatalogTable(){
+  const wrap = document.getElementById('epiCatalogTableWrap');
+  const list = state.epiCatalog.slice().sort((a,b)=>a.descricao.localeCompare(b.descricao));
+  document.getElementById('epiCatalogCount').textContent = `${list.length} modelo(s) cadastrado(s)`;
+  if(list.length===0){
+    wrap.innerHTML = `<div class="empty-state">
+      <div class="icon">🦺</div>
+      <p>Nenhum EPI cadastrado no catálogo ainda. Cadastre acima escolhendo a categoria "EPI".</p>
+    </div>`;
+    return;
+  }
+  const rows = list.map(e=>`
+    <tr>
+      <td class="code">${escapeHtml(e.codigo)}</td>
+      <td>${escapeHtml(e.descricao)}</td>
+      <td class="row-actions">
+        <button class="btn btn-danger btn-sm" onclick="deleteEpiCatalogEntry('${e.id}')">Excluir</button>
+      </td>
+    </tr>`).join('');
+  wrap.innerHTML = `<table>
+    <thead><tr><th>Código</th><th>Descrição</th><th></th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+async function deleteEpiCatalogEntry(id){
+  const entry = state.epiCatalog.find(e=>e.id===id);
+  if(!entry) return;
+  if(!(await customConfirm(`Excluir "${entry.descricao}" (código ${entry.codigo}) do catálogo de EPI? Isso não afeta entregas já registradas.`))) return;
+  state.epiCatalog = state.epiCatalog.filter(e=>e.id!==id);
+  renderEpiCatalogTable();
+  showToast('Removido do catálogo de EPI.');
+  dbDeleteEpiCatalog(id);
 }
 
 function renderStockTable(){
@@ -1743,12 +1924,14 @@ function printEpiForm(id){
   const margin = 12;
   let y = 15;
 
-  try{ doc.addImage(LOGO_SRC, 'PNG', pageWidth-margin-30, y-7, 30, 8.3); }catch(e){}
+  const logoW = 46;
+  const logoH = logoW * (117/426);
+  try{ doc.addImage(LOGO_SRC, 'PNG', margin, y-9, logoW, logoH); }catch(e){}
 
   doc.setFont('helvetica','bold');
   doc.setFontSize(16);
   doc.setTextColor(20,20,20);
-  doc.text('FICHA PARA CONTROLE DE EPI', margin, y);
+  doc.text('FICHA PARA CONTROLE DE EPI', margin + logoW + 8, y-2);
   y += 8;
 
   doc.setDrawColor(180,180,180);
@@ -1773,28 +1956,18 @@ function printEpiForm(id){
   doc.setFont('helvetica','normal'); doc.text(fmtDate(todayStr()), margin+230, y);
   y += 9;
 
-  const declaracao = 'Declaro ter recebido gratuitamente da empresa Grupo Jet o(s) equipamento(s) de proteção individual (EPI) abaixo relacionado(s), em conformidade com a Norma Regulamentadora NR-06. Comprometo-me a utilizá-lo(s) e conservá-lo(s) adequadamente, respondendo pela perda, extravio ou má utilização do material, na forma prevista no parágrafo 1º do Art. 462 da Consolidação das Leis do Trabalho (CLT), inclusive no que couber a título de indenização por desconto em folha de pagamento. OBS.: um novo EPI somente será fornecido mediante a devolução do usado.';
+  const declaracao = 'Declaro ter recebido gratuitamente da empresa RD TELECOM LTDA. o(s) equipamento(s) de proteção individual (EPI) abaixo relacionado(s), em conformidade com a Norma Regulamentadora NR-06. Comprometo-me a utilizá-lo(s) e conservá-lo(s) adequadamente, respondendo pela perda, extravio ou má utilização do material, na forma prevista no parágrafo 1º do Art. 462 da Consolidação das Leis do Trabalho (CLT), inclusive no que couber a título de indenização por desconto em folha de pagamento. OBS.: um novo EPI somente será fornecido mediante a devolução do usado.';
   doc.setFont('helvetica','normal');
   doc.setFontSize(8);
   doc.setTextColor(70,70,70);
   const declLines = doc.splitTextToSize(declaracao, pageWidth - margin*2);
   doc.text(declLines, margin, y);
-  y += declLines.length * 3.6 + 7;
-
-  doc.setDrawColor(0);
-  doc.setLineWidth(0.2);
-  doc.line(margin, y, margin+90, y);
-  doc.line(margin+110, y, margin+150, y);
-  doc.setFontSize(7.5);
-  doc.setTextColor(60,60,60);
-  doc.text('Assinatura do Trabalhador', margin, y+4);
-  doc.text('Rubrica', margin+110, y+4);
-  y += 12;
+  y += declLines.length * 3.6 + 10;
 
   const body = itensEpi.map(it => [
-    '1',
+    it.codigo || '—',
     it.descricao || '—',
-    it.ca || '—',
+    it.ca || 'Sem CA',
     fmtDate(it.dataEntrega),
     '',
     it.status==='Devolvido' ? fmtDate(it.dataDevolucao) : '',
@@ -1805,14 +1978,14 @@ function printEpiForm(id){
   doc.autoTable({
     startY: y,
     margin: { left: margin, right: margin },
-    head: [['Quant.','Descrição do EPI','CA','Data\nEntrega','Assinatura do Trabalhador','Data\nDevolução','Quant.','Assinatura Almoxarifado']],
+    head: [['Código do\nMaterial','Descrição do EPI','CA','Data\nEntrega','Assinatura do Trabalhador','Data\nDevolução','Quant.','Assinatura Almoxarifado']],
     body,
     theme: 'grid',
     styles: { fontSize: 8, cellPadding: 3, textColor:[30,30,30], lineColor:[160,160,160], lineWidth:0.2, valign:'middle' },
     headStyles: { fillColor: [240,240,240], textColor:[20,20,20], fontStyle:'bold', fontSize:7.5, halign:'center' },
     columnStyles: {
-      0:{cellWidth:14, halign:'center'},
-      1:{cellWidth:58},
+      0:{cellWidth:22, halign:'center'},
+      1:{cellWidth:50},
       2:{cellWidth:20, halign:'center'},
       3:{cellWidth:22, halign:'center'},
       4:{cellWidth:52},
