@@ -711,43 +711,60 @@
 <!-- MODAL: item form -->
 <div class="modal-overlay" id="modalItem">
   <div class="modal">
-    <h3 id="itemModalTitle">Novo item</h3>
+    <h3 id="itemModalTitle">Adicionar item à ficha</h3>
     <div id="itemForm">
-      <div class="form-grid">
-        <div class="form-field full">
-          <label>Categoria *</label>
-          <select id="i_categoria_tipo" onchange="updateItemCategoryFields()">
-            <option value="Equipamentos">Equipamentos</option>
-            <option value="EPI">EPI</option>
-            <option value="Ferramental">Ferramental</option>
-          </select>
-        </div>
 
-        <div class="form-field full" id="i_descricao_wrap">
-          <label>Descrição do item *</label>
-          <input type="text" id="i_descricao" placeholder="Ex.: Notebook Dell Latitude 5420">
+      <!-- MODO ADICIONAR: busca por itens ja cadastrados (estoque ou catalogo de EPI) -->
+      <div id="itemSearchBlock">
+        <div class="form-field full" style="position:relative;margin-bottom:6px;">
+          <label>Buscar item já cadastrado — nome, código, patrimônio ou série *</label>
+          <input type="text" id="item_search" placeholder="Digite para buscar..." oninput="filterItemSearchResults()" autocomplete="off">
+          <div id="item_search_results" style="display:none;position:absolute;z-index:20;background:#fff;border:1px solid var(--border);border-radius:8px;margin-top:4px;max-height:220px;overflow-y:auto;width:100%;box-shadow:0 6px 20px rgba(0,0,0,0.1);"></div>
         </div>
+        <div id="item_search_selected" style="display:none;margin-bottom:14px;padding:10px 12px;background:var(--blue-soft);border-radius:8px;font-size:13px;color:#1e3a6e;"></div>
+      </div>
 
-        <div class="form-field full" id="i_epi_search_wrap" style="display:none;position:relative;">
-          <label>Buscar EPI no catálogo — código ou nome *</label>
-          <input type="text" id="i_epi_search" placeholder="Ex.: CAP-VX-AZ ou capacete" oninput="filterEpiCatalogResults()" autocomplete="off">
-          <div id="i_epi_results" style="display:none;position:absolute;z-index:20;background:#fff;border:1px solid var(--border);border-radius:8px;margin-top:4px;max-height:180px;overflow-y:auto;width:100%;box-shadow:0 6px 20px rgba(0,0,0,0.1);"></div>
-          <div id="i_epi_selected" style="display:none;margin-top:8px;padding:9px 11px;background:var(--blue-soft);border-radius:6px;font-size:12.5px;color:#1e3a6e;"></div>
+      <!-- MODO EDITAR: edicao direta de um item ja vinculado -->
+      <div id="itemEditBlock" style="display:none;">
+        <div class="form-grid">
+          <div class="form-field full">
+            <label>Categoria *</label>
+            <select id="i_categoria_tipo" onchange="updateItemCategoryFields()">
+              <option value="Equipamentos">Equipamentos</option>
+              <option value="EPI">EPI</option>
+              <option value="Ferramental">Ferramental</option>
+            </select>
+          </div>
+          <div class="form-field full" id="i_descricao_wrap">
+            <label>Descrição do item *</label>
+            <input type="text" id="i_descricao" placeholder="Ex.: Notebook Dell Latitude 5420">
+          </div>
+          <div class="form-field" id="i_numero_wrap">
+            <label id="i_numero_label">Nº de patrimônio *</label>
+            <input type="text" id="i_numero" placeholder="Ex.: NP-0234">
+          </div>
+          <div class="form-field" id="i_serial_wrap" style="display:none;">
+            <label>Número de série *</label>
+            <input type="text" id="i_serial" placeholder="Ex.: SN-88213">
+          </div>
+          <div class="form-field full" id="i_ca_wrap" style="display:none;">
+            <label>CA (Certificado de Aprovação)</label>
+            <input type="text" id="i_ca" placeholder="Ex.: 12345">
+            <label style="display:flex;align-items:center;gap:7px;margin-top:9px;font-weight:500;font-size:12.5px;color:var(--ink-soft);">
+              <input type="checkbox" id="i_sem_ca" onchange="toggleSemCa()" style="width:auto;">
+              Sem CA
+            </label>
+          </div>
         </div>
+      </div>
 
-        <div class="form-field" id="i_numero_wrap">
-          <label id="i_numero_label">Nº de patrimônio *</label>
-          <input type="text" id="i_numero" placeholder="Ex.: NP-0234">
-        </div>
-        <div class="form-field" id="i_serial_wrap" style="display:none;">
-          <label>Número de série *</label>
-          <input type="text" id="i_serial" placeholder="Ex.: SN-88213">
-        </div>
-        <div class="form-field full" id="i_ca_wrap" style="display:none;">
+      <!-- CAMPOS COMUNS: aparecem sempre no modo editar, e no modo adicionar so depois de escolher um item -->
+      <div class="form-grid" id="itemCommonFields" style="display:none;margin-top:6px;">
+        <div class="form-field full" id="add_ca_wrap" style="display:none;">
           <label>CA (Certificado de Aprovação)</label>
-          <input type="text" id="i_ca" placeholder="Ex.: 12345">
+          <input type="text" id="i_ca_add" placeholder="Ex.: 12345">
           <label style="display:flex;align-items:center;gap:7px;margin-top:9px;font-weight:500;font-size:12.5px;color:var(--ink-soft);">
-            <input type="checkbox" id="i_sem_ca" onchange="toggleSemCa()" style="width:auto;">
+            <input type="checkbox" id="i_sem_ca_add" onchange="toggleSemCaAdd()" style="width:auto;">
             Entregar sem CA (não possui / não informado)
           </label>
         </div>
@@ -769,10 +786,10 @@
           <textarea id="i_obs" rows="2"></textarea>
         </div>
       </div>
-      <div class="modal-actions">
-        <button type="button" class="btn btn-outline" onclick="closeModal('modalItem')">Cancelar</button>
-        <button type="button" class="btn btn-primary" onclick="saveItemForm(event)">Salvar item</button>
-      </div>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-outline" onclick="closeModal('modalItem')">Cancelar</button>
+      <button type="button" class="btn btn-primary" onclick="saveItemForm(event)">Salvar item</button>
     </div>
   </div>
 </div>
@@ -1325,161 +1342,217 @@ async function returnItem(itemId){
   it.dataDevolucao = todayStr();
   renderFicha(state.currentEmployeeId);
   renderHome();
+  renderItemsSearch();
+  renderStockTable();
   showToast('Item devolvido.');
   dbUpdateItem(it);
 }
 function updateItemCategoryFields(){
   const cat = document.getElementById('i_categoria_tipo').value;
   const isEpi = cat === 'EPI';
-  document.getElementById('i_descricao_wrap').style.display = isEpi ? 'none' : 'block';
-  document.getElementById('i_epi_search_wrap').style.display = isEpi ? 'block' : 'none';
   document.getElementById('i_numero_wrap').style.display = (cat==='Equipamentos' || cat==='Ferramental') ? 'block' : 'none';
   document.getElementById('i_serial_wrap').style.display = (cat==='Ferramental') ? 'block' : 'none';
   document.getElementById('i_ca_wrap').style.display = isEpi ? 'block' : 'none';
 }
-function filterEpiCatalogResults(){
-  const q = normalize(document.getElementById('i_epi_search').value);
-  const resultsEl = document.getElementById('i_epi_results');
+function filterItemSearchResults(){
+  const q = normalize(document.getElementById('item_search').value);
+  const resultsEl = document.getElementById('item_search_results');
   if(!q){ resultsEl.style.display = 'none'; resultsEl.innerHTML = ''; return; }
-  const matches = state.epiCatalog.filter(e => normalize(e.codigo).includes(q) || normalize(e.descricao).includes(q)).slice(0,8);
-  if(matches.length===0){
-    resultsEl.innerHTML = `<div style="padding:10px 12px;font-size:12.5px;color:var(--ink-faint);">Nenhum EPI encontrado no catálogo. Cadastre em "Cadastrar itens".</div>`;
+
+  const stockMatches = state.items.filter(it => it.status==='Em estoque' &&
+    [it.descricao,it.numero,it.serial].some(f=>normalize(f).includes(q))
+  ).slice(0,6);
+  const epiMatches = state.epiCatalog.filter(e =>
+    normalize(e.codigo).includes(q) || normalize(e.descricao).includes(q)
+  ).slice(0,6);
+
+  if(stockMatches.length===0 && epiMatches.length===0){
+    resultsEl.innerHTML = `<div style="padding:10px 12px;font-size:12.5px;color:var(--ink-faint);">Nenhum item encontrado no estoque ou no catálogo de EPI. Cadastre em "Cadastrar itens".</div>`;
     resultsEl.style.display = 'block';
     return;
   }
-  resultsEl.innerHTML = matches.map(e=>`
-    <div style="padding:9px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--border);" onclick="selectEpiCatalog('${e.id}')" onmouseover="this.style.background='#FAFAFA'" onmouseout="this.style.background='#fff'">
+  let html = '';
+  stockMatches.forEach(it=>{
+    html += `<div style="padding:9px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--border);" onclick="selectSearchItem('stock','${it.id}')" onmouseover="this.style.background='#FAFAFA'" onmouseout="this.style.background='#fff'">
+      <span class="badge ${categoryBadgeClass(it.categoria)}" style="margin-right:6px;">${escapeHtml(it.categoria)}</span>
+      <strong>${escapeHtml(it.descricao)}</strong> — ${formatItemIdentifier(it)}
+    </div>`;
+  });
+  epiMatches.forEach(e=>{
+    html += `<div style="padding:9px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--border);" onclick="selectSearchItem('epi','${e.id}')" onmouseover="this.style.background='#FAFAFA'" onmouseout="this.style.background='#fff'">
+      <span class="badge badge-cat-epi" style="margin-right:6px;">EPI</span>
       <span class="code" style="font-weight:700;">${escapeHtml(e.codigo)}</span> — ${escapeHtml(e.descricao)}
-    </div>`).join('');
+    </div>`;
+  });
+  resultsEl.innerHTML = html;
   resultsEl.style.display = 'block';
 }
-function selectEpiCatalog(id){
-  const entry = state.epiCatalog.find(e=>e.id===id);
-  if(!entry) return;
-  state.selectedEpiCatalogId = id;
-  document.getElementById('i_epi_search').value = '';
-  document.getElementById('i_epi_results').style.display = 'none';
-  document.getElementById('i_epi_results').innerHTML = '';
-  document.getElementById('i_epi_selected').style.display = 'block';
-  document.getElementById('i_epi_selected').innerHTML = `Selecionado: <strong>${escapeHtml(entry.codigo)} — ${escapeHtml(entry.descricao)}</strong> <a onclick="clearEpiSelection()" style="cursor:pointer;color:var(--blue);margin-left:8px;text-decoration:underline;">Trocar</a>`;
+function selectSearchItem(type, id){
+  document.getElementById('item_search').value = '';
+  document.getElementById('item_search_results').style.display = 'none';
+  document.getElementById('item_search_results').innerHTML = '';
+  document.getElementById('itemCommonFields').style.display = 'grid';
+
+  const selEl = document.getElementById('item_search_selected');
+  selEl.style.display = 'block';
+
+  document.getElementById('add_ca_wrap').style.display = (type==='epi') ? 'block' : 'none';
+  document.getElementById('i_ca_add').value = '';
+  document.getElementById('i_sem_ca_add').checked = false;
+  document.getElementById('i_ca_add').disabled = false;
+
+  if(type === 'stock'){
+    state.selectedStockItemId = id;
+    state.selectedEpiCatalogId = null;
+    const it = state.items.find(i=>i.id===id);
+    selEl.innerHTML = `Selecionado: <strong>${escapeHtml(it.descricao)}</strong> — ${formatItemIdentifier(it)} <a onclick="clearItemSelection()" style="cursor:pointer;color:var(--blue);margin-left:8px;text-decoration:underline;">Trocar</a>`;
+  }else{
+    state.selectedEpiCatalogId = id;
+    state.selectedStockItemId = null;
+    const e = state.epiCatalog.find(x=>x.id===id);
+    selEl.innerHTML = `Selecionado: <strong>${escapeHtml(e.codigo)} — ${escapeHtml(e.descricao)}</strong> <a onclick="clearItemSelection()" style="cursor:pointer;color:var(--blue);margin-left:8px;text-decoration:underline;">Trocar</a>`;
+  }
 }
-function clearEpiSelection(){
+function clearItemSelection(){
+  state.selectedStockItemId = null;
   state.selectedEpiCatalogId = null;
-  document.getElementById('i_epi_selected').style.display = 'none';
-  document.getElementById('i_epi_selected').innerHTML = '';
+  document.getElementById('item_search_selected').style.display = 'none';
+  document.getElementById('item_search_selected').innerHTML = '';
+  document.getElementById('itemCommonFields').style.display = 'none';
+  document.getElementById('add_ca_wrap').style.display = 'none';
 }
 function toggleSemCa(){
   const checked = document.getElementById('i_sem_ca').checked;
   document.getElementById('i_ca').disabled = checked;
   if(checked) document.getElementById('i_ca').value = '';
 }
+function toggleSemCaAdd(){
+  const checked = document.getElementById('i_sem_ca_add').checked;
+  document.getElementById('i_ca_add').disabled = checked;
+  if(checked) document.getElementById('i_ca_add').value = '';
+}
 function openItemForm(employeeId, itemId){
   state.itemFormEmployeeId = employeeId;
   state.editingItemId = itemId || null;
   state.selectedEpiCatalogId = null;
+  state.selectedStockItemId = null;
   const isEdit = !!itemId;
   document.getElementById('itemModalTitle').textContent = isEdit ? 'Editar item' : 'Adicionar item à ficha';
-  const it = isEdit ? state.items.find(i=>i.id===itemId) : null;
-  document.getElementById('i_descricao').value = it?.descricao || '';
-  document.getElementById('i_categoria_tipo').value = it?.categoria || 'Equipamentos';
-  document.getElementById('i_numero').value = it?.numero || '';
-  document.getElementById('i_serial').value = it?.serial || '';
-  document.getElementById('i_ca').value = it?.ca || '';
-  document.getElementById('i_ca').disabled = false;
-  document.getElementById('i_sem_ca').checked = false;
-  document.getElementById('i_estado').value = it?.estado || 'Novo';
-  document.getElementById('i_data').value = it?.dataEntrega || todayStr();
-  document.getElementById('i_obs').value = it?.obs || '';
-  document.getElementById('i_epi_search').value = '';
-  document.getElementById('i_epi_results').style.display = 'none';
-  document.getElementById('i_epi_results').innerHTML = '';
-  document.getElementById('i_epi_selected').style.display = 'none';
-  document.getElementById('i_epi_selected').innerHTML = '';
 
-  if(isEdit && it && it.categoria === 'EPI'){
-    state.selectedEpiCatalogId = 'editing-existing';
-    document.getElementById('i_epi_selected').style.display = 'block';
-    document.getElementById('i_epi_selected').innerHTML = `Item atual: <strong>${it.codigo ? escapeHtml(it.codigo)+' — ' : ''}${escapeHtml(it.descricao)}</strong>`;
-    if(!it.ca) document.getElementById('i_sem_ca').checked = true;
+  document.getElementById('itemSearchBlock').style.display = isEdit ? 'none' : 'block';
+  document.getElementById('itemEditBlock').style.display = isEdit ? 'block' : 'none';
+  document.getElementById('itemCommonFields').style.display = isEdit ? 'grid' : 'none';
+  document.getElementById('add_ca_wrap').style.display = 'none';
+
+  document.getElementById('item_search').value = '';
+  document.getElementById('item_search_results').style.display = 'none';
+  document.getElementById('item_search_results').innerHTML = '';
+  document.getElementById('item_search_selected').style.display = 'none';
+  document.getElementById('item_search_selected').innerHTML = '';
+
+  if(isEdit){
+    const it = state.items.find(i=>i.id===itemId);
+    document.getElementById('i_descricao').value = it?.descricao || '';
+    document.getElementById('i_categoria_tipo').value = it?.categoria || 'Equipamentos';
+    document.getElementById('i_numero').value = it?.numero || '';
+    document.getElementById('i_serial').value = it?.serial || '';
+    document.getElementById('i_ca').value = it?.ca || '';
+    document.getElementById('i_ca').disabled = false;
+    document.getElementById('i_sem_ca').checked = (it?.categoria==='EPI' && !it?.ca);
+    document.getElementById('i_estado').value = it?.estado || 'Novo';
+    document.getElementById('i_data').value = it?.dataEntrega || todayStr();
+    document.getElementById('i_obs').value = it?.obs || '';
+    updateItemCategoryFields();
+  }else{
+    document.getElementById('i_estado').value = 'Novo';
+    document.getElementById('i_data').value = todayStr();
+    document.getElementById('i_obs').value = '';
   }
 
-  updateItemCategoryFields();
   document.getElementById('modalItem').classList.add('active');
 }
 async function saveItemForm(evt){
   evt.preventDefault();
-  const categoria = document.getElementById('i_categoria_tipo').value;
-  const semCa = categoria==='EPI' && document.getElementById('i_sem_ca').checked;
 
-  let descricao, codigo = null;
-  if(categoria === 'EPI'){
-    if(state.editingItemId){
-      const existing = state.items.find(i=>i.id===state.editingItemId);
-      descricao = existing?.descricao || '';
-      codigo = existing?.codigo || null;
-    }else{
-      if(!state.selectedEpiCatalogId){
-        showToast('Busque e selecione um EPI do catálogo.');
-        return;
-      }
-      const entry = state.epiCatalog.find(e=>e.id===state.selectedEpiCatalogId);
-      if(!entry){
-        showToast('Selecione um EPI válido do catálogo.');
-        return;
-      }
-      descricao = entry.descricao;
-      codigo = entry.codigo;
-    }
-  }else{
-    descricao = document.getElementById('i_descricao').value.trim();
-  }
-
-  const data = {
-    descricao,
-    categoria,
-    codigo: categoria==='EPI' ? codigo : null,
-    numero: (categoria==='Equipamentos' || categoria==='Ferramental') ? document.getElementById('i_numero').value.trim() : null,
-    serial: categoria==='Ferramental' ? document.getElementById('i_serial').value.trim() : null,
-    ca: categoria==='EPI' ? (semCa ? null : document.getElementById('i_ca').value.trim()) : null,
-    estado: document.getElementById('i_estado').value,
-    dataEntrega: document.getElementById('i_data').value,
-    obs: document.getElementById('i_obs').value.trim()
-  };
-  if(categoria !== 'EPI' && !data.descricao){
-    showToast('Preencha a descrição do item.');
-    return;
-  }
-  if((categoria==='Equipamentos' || categoria==='Ferramental') && !data.numero){
-    showToast('Preencha o número de patrimônio.');
-    return;
-  }
-  if(categoria==='Ferramental' && !data.serial){
-    showToast('Preencha o número de série.');
-    return;
-  }
-  if(categoria==='EPI' && !semCa && !data.ca){
-    showToast('Preencha o CA ou marque "Entregar sem CA".');
-    return;
-  }
-  let isNew = false;
   if(state.editingItemId){
+    const categoria = document.getElementById('i_categoria_tipo').value;
+    const semCa = categoria==='EPI' && document.getElementById('i_sem_ca').checked;
+    const data = {
+      descricao: document.getElementById('i_descricao').value.trim(),
+      categoria,
+      numero: (categoria==='Equipamentos' || categoria==='Ferramental') ? document.getElementById('i_numero').value.trim() : null,
+      serial: categoria==='Ferramental' ? document.getElementById('i_serial').value.trim() : null,
+      ca: categoria==='EPI' ? (semCa ? null : document.getElementById('i_ca').value.trim()) : null,
+      estado: document.getElementById('i_estado').value,
+      dataEntrega: document.getElementById('i_data').value,
+      obs: document.getElementById('i_obs').value.trim()
+    };
+    if(!data.descricao){ showToast('Preencha a descrição do item.'); return; }
+    if((categoria==='Equipamentos' || categoria==='Ferramental') && !data.numero){ showToast('Preencha o número de patrimônio.'); return; }
+    if(categoria==='Ferramental' && !data.serial){ showToast('Preencha o número de série.'); return; }
+    if(categoria==='EPI' && !semCa && !data.ca){ showToast('Preencha o CA ou marque "Sem CA".'); return; }
+
     const it = state.items.find(i=>i.id===state.editingItemId);
     Object.assign(it, data);
-  }else{
-    data.id = uid();
-    data.employeeId = state.itemFormEmployeeId;
-    data.status = 'Em posse';
-    state.items.push(data);
-    isNew = true;
+    closeModal('modalItem');
+    showToast('Item salvo.');
+    if(state.currentEmployeeId) renderFicha(state.currentEmployeeId);
+    renderEmployeesList(); renderHome(); renderStockTable(); renderItemsSearch();
+    dbUpdateItem(it);
+    return;
   }
+
+  if(!state.selectedStockItemId && !state.selectedEpiCatalogId){
+    showToast('Busque e selecione um item já cadastrado.');
+    return;
+  }
+
+  const estado = document.getElementById('i_estado').value;
+  const dataEntrega = document.getElementById('i_data').value || todayStr();
+  const obs = document.getElementById('i_obs').value.trim();
+
+  if(state.selectedStockItemId){
+    const it = state.items.find(i=>i.id===state.selectedStockItemId);
+    if(!it){ showToast('Item não encontrado.'); return; }
+    it.employeeId = state.itemFormEmployeeId;
+    it.status = 'Em posse';
+    it.dataEntrega = dataEntrega;
+    if(estado) it.estado = estado;
+    if(obs) it.obs = obs;
+    closeModal('modalItem');
+    showToast('Item adicionado à ficha.');
+    if(state.currentEmployeeId) renderFicha(state.currentEmployeeId);
+    renderEmployeesList(); renderHome(); renderStockTable(); renderItemsSearch();
+    dbUpdateItem(it);
+    return;
+  }
+
+  const entry = state.epiCatalog.find(e=>e.id===state.selectedEpiCatalogId);
+  if(!entry){ showToast('EPI não encontrado no catálogo.'); return; }
+  const semCa = document.getElementById('i_sem_ca_add').checked;
+  const ca = semCa ? null : document.getElementById('i_ca_add').value.trim();
+  if(!semCa && !ca){ showToast('Preencha o CA ou marque "Entregar sem CA".'); return; }
+
+  const data = {
+    id: uid(),
+    descricao: entry.descricao,
+    codigo: entry.codigo,
+    categoria: 'EPI',
+    numero: null,
+    serial: null,
+    ca,
+    estado,
+    obs,
+    dataEntrega,
+    employeeId: state.itemFormEmployeeId,
+    status: 'Em posse'
+  };
+  state.items.push(data);
   closeModal('modalItem');
-  showToast('Item salvo.');
+  showToast('Item adicionado à ficha.');
   if(state.currentEmployeeId) renderFicha(state.currentEmployeeId);
-  renderEmployeesList();
-  renderHome();
-  renderStockTable();
-  renderItemsSearch();
-  if(isNew) dbInsertItems([data]); else dbUpdateItem(state.items.find(i=>i.id===state.editingItemId));
+  renderEmployeesList(); renderHome(); renderStockTable(); renderItemsSearch();
+  dbInsertItems([data]);
 }
 async function deleteItem(itemId){
   const it = state.items.find(i=>i.id===itemId);
@@ -1745,7 +1818,7 @@ function renderItemsSearch(filter){
   const q = normalize(filter);
   let list = state.items.slice().sort((a,b)=>(b.dataEntrega||'').localeCompare(a.dataEntrega||''));
   if(q){
-    list = list.filter(it => [it.descricao,it.numero,it.serial,it.ca,it.categoria].some(f=>normalize(f).includes(q)));
+    list = list.filter(it => [it.descricao,it.numero,it.serial,it.ca,it.codigo,it.categoria].some(f=>normalize(f).includes(q)));
   }
   if(list.length===0){
     wrap.innerHTML = `<div class="empty-state">
@@ -1757,6 +1830,18 @@ function renderItemsSearch(filter){
   const rows = list.map(it=>{
     const emp = state.employees.find(e=>e.id===it.employeeId);
     const badgeClass = it.status==='Devolvido' ? 'badge-devolvido' : (it.status==='Em estoque' ? 'badge-estoque' : 'badge-posse');
+    let actions = '';
+    if(it.status==='Em estoque'){
+      actions += `<button class="btn btn-primary btn-sm" onclick="openAssignModal('${it.id}')">Atribuir</button>`;
+    }
+    if(it.status==='Em posse'){
+      actions += `<button class="btn btn-outline btn-sm" onclick="returnItem('${it.id}')">Devolver</button>`;
+    }
+    if(emp){
+      actions += `<button class="btn btn-outline btn-sm" onclick="openFicha('${emp.id}')">Ver ficha</button>`;
+    }
+    actions += `<button class="btn btn-outline btn-sm" onclick="openItemForm(${emp?`'${emp.id}'`:'null'},'${it.id}')">Editar</button>`;
+    actions += `<button class="btn btn-danger btn-sm" onclick="deleteItem('${it.id}')">Excluir</button>`;
     return `<tr>
       <td>${escapeHtml(it.descricao)}</td>
       <td class="code">${formatItemIdentifier(it)}</td>
@@ -1764,10 +1849,11 @@ function renderItemsSearch(filter){
       <td><span class="badge ${badgeClass}">${it.status||'Em posse'}</span></td>
       <td>${emp ? `<a class="name-link" onclick="openFicha('${emp.id}')">${escapeHtml(emp.nome)}</a>` : '<em>Em estoque</em>'}</td>
       <td class="code">${fmtDate(it.dataEntrega || it.dataAquisicao)}</td>
+      <td class="row-actions">${actions}</td>
     </tr>`;
   }).join('');
   wrap.innerHTML = `<table>
-    <thead><tr><th>Item</th><th>Identificação</th><th>Categoria</th><th>Status</th><th>Colaborador</th><th>Entrega</th></tr></thead>
+    <thead><tr><th>Item</th><th>Identificação</th><th>Categoria</th><th>Status</th><th>Colaborador</th><th>Entrega</th><th></th></tr></thead>
     <tbody>${rows}</tbody>
   </table>`;
 }
@@ -1962,11 +2048,22 @@ function printEpiForm(id){
   doc.setTextColor(70,70,70);
   const declLines = doc.splitTextToSize(declaracao, pageWidth - margin*2);
   doc.text(declLines, margin, y);
-  y += declLines.length * 3.6 + 10;
+  y += declLines.length * 3.6 + 8;
+
+  doc.setDrawColor(0);
+  doc.setLineWidth(0.2);
+  doc.line(margin, y, margin+90, y);
+  doc.line(margin+110, y, margin+150, y);
+  doc.setFontSize(7.5);
+  doc.setTextColor(60,60,60);
+  doc.text('Assinatura do Trabalhador', margin, y+4);
+  doc.text('Rubrica', margin+110, y+4);
+  y += 13;
 
   const body = itensEpi.map(it => [
     it.codigo || '—',
     it.descricao || '—',
+    '1',
     it.ca || 'Sem CA',
     fmtDate(it.dataEntrega),
     '',
@@ -1978,20 +2075,21 @@ function printEpiForm(id){
   doc.autoTable({
     startY: y,
     margin: { left: margin, right: margin },
-    head: [['Código do\nMaterial','Descrição do EPI','CA','Data\nEntrega','Assinatura do Trabalhador','Data\nDevolução','Quant.','Assinatura Almoxarifado']],
+    head: [['Código','Descrição da Ferramenta - Marca','Quantidade','CA','Data da\nEntrega','Assinatura do\nTrabalhador','Data da\nDevolução','Quantidade\nDevolvida','Assinatura do\nAlmoxarifado']],
     body,
     theme: 'grid',
     styles: { fontSize: 8, cellPadding: 3, textColor:[30,30,30], lineColor:[160,160,160], lineWidth:0.2, valign:'middle' },
     headStyles: { fillColor: [240,240,240], textColor:[20,20,20], fontStyle:'bold', fontSize:7.5, halign:'center' },
     columnStyles: {
-      0:{cellWidth:22, halign:'center'},
-      1:{cellWidth:50},
-      2:{cellWidth:20, halign:'center'},
-      3:{cellWidth:22, halign:'center'},
-      4:{cellWidth:52},
-      5:{cellWidth:24, halign:'center'},
-      6:{cellWidth:14, halign:'center'},
-      7:{cellWidth:52}
+      0:{cellWidth:20, halign:'center'},
+      1:{cellWidth:46},
+      2:{cellWidth:18, halign:'center'},
+      3:{cellWidth:16, halign:'center'},
+      4:{cellWidth:19, halign:'center'},
+      5:{cellWidth:42},
+      6:{cellWidth:19, halign:'center'},
+      7:{cellWidth:19, halign:'center'},
+      8:{cellWidth:42}
     }
   });
 
