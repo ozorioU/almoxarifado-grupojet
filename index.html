@@ -261,6 +261,7 @@
   .badge-cat-equipamentos{background:var(--blue-soft);color:var(--blue);}
   .badge-cat-epi{background:var(--green-soft);color:var(--green);}
   .badge-cat-ferramental{background:#F3E8FF;color:#7C3AED;}
+  .badge-cat-informatica{background:#E0F2FE;color:#0369A1;}
 
   .empty-state{text-align:center;padding:50px 20px;color:var(--ink-soft);}
   .empty-state .icon{font-size:30px;margin-bottom:8px;}
@@ -437,6 +438,10 @@
       <div class="nav-item" data-view="vale" onclick="switchView('vale')">
         <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M9 15h6"/><path d="M9 11h2"/></svg>
         <span>Emitir vale</span>
+      </div>
+      <div class="nav-item" data-view="chip" onclick="switchView('chip')">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 6h6"/><rect x="8" y="10" width="8" height="6" rx="1"/></svg>
+        <span>Controle de Chip</span>
       </div>
       <div class="nav-section-label" id="adminSectionLabel" style="display:none;">Administração</div>
       <div class="nav-item" id="navUsers" data-view="users" onclick="switchView('users')" style="display:none;">
@@ -724,6 +729,64 @@
         </div>
       </div>
 
+      <!-- CONTROLE DE CHIP -->
+      <div class="view" id="view-chip">
+        <div class="page-head">
+          <div>
+            <h2>Controle de Chip</h2>
+            <p>Cadastre chips (ICCID e número) e atribua a um colaborador — passam a constar na ficha como Informática.</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 6h6"/><rect x="8" y="10" width="8" height="6" rx="1"/></svg>
+            <h3>Novo chip</h3>
+          </div>
+          <div class="card-body" style="padding-top:16px;">
+            <div class="form-grid">
+              <div class="form-field">
+                <label>ICCID *</label>
+                <input type="text" id="chip_iccid" placeholder="Ex.: 8955010000000000000">
+              </div>
+              <div class="form-field">
+                <label>Número do chip *</label>
+                <input type="text" id="chip_numero" placeholder="Ex.: (61) 99999-0000">
+              </div>
+              <div class="form-field">
+                <label>Operadora</label>
+                <input type="text" id="chip_operadora" list="operadorasList" placeholder="Ex.: Vivo">
+                <datalist id="operadorasList">
+                  <option value="Vivo"><option value="Claro"><option value="TIM"><option value="Oi">
+                </datalist>
+              </div>
+              <div class="form-field">
+                <label>Data de entrada</label>
+                <input type="date" id="chip_data">
+              </div>
+              <div class="form-field full">
+                <label>Observações</label>
+                <textarea id="chip_obs" rows="2"></textarea>
+              </div>
+            </div>
+            <div class="modal-actions" style="justify-content:flex-start;margin-top:18px;">
+              <button type="button" class="btn btn-primary" onclick="saveChip(event)">Cadastrar chip</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-title">
+          <h3>Chips cadastrados</h3>
+          <span class="count" id="chipCount"></span>
+        </div>
+        <div class="search-row">
+          <input type="text" id="chipSearchInput" placeholder="Buscar por ICCID, número ou operadora..." oninput="renderChipTable(this.value)">
+        </div>
+        <div class="card" style="padding:0;overflow-x:auto;">
+          <div id="chipTableWrap"></div>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -814,6 +877,7 @@
               <option value="Equipamentos">Equipamentos</option>
               <option value="EPI">EPI</option>
               <option value="Ferramental">Ferramental</option>
+              <option value="Informática">Informática (Chip)</option>
             </select>
           </div>
           <div class="form-field full" id="i_descricao_wrap">
@@ -827,6 +891,10 @@
           <div class="form-field" id="i_serial_wrap" style="display:none;">
             <label>Número de série *</label>
             <input type="text" id="i_serial" placeholder="Ex.: SN-88213">
+          </div>
+          <div class="form-field" id="i_iccid_wrap" style="display:none;">
+            <label>ICCID *</label>
+            <input type="text" id="i_iccid" placeholder="Ex.: 8955010000000000000">
           </div>
           <div class="form-field full" id="i_ca_wrap" style="display:none;">
             <label>CA (Certificado de Aprovação)</label>
@@ -1018,6 +1086,7 @@ function itemToRow(it){
     serial: it.serial || null,
     ca: it.ca || null,
     codigo: it.codigo || null,
+    iccid: it.iccid || null,
     categoria: it.categoria || null,
     estado: it.estado || null,
     obs: it.obs || null,
@@ -1036,6 +1105,7 @@ function rowToItem(row){
     serial: row.serial,
     ca: row.ca,
     codigo: row.codigo,
+    iccid: row.iccid,
     categoria: row.categoria,
     estado: row.estado,
     obs: row.obs,
@@ -1149,11 +1219,15 @@ function formatItemIdentifier(it){
     const codigoPart = it.codigo ? `Código ${it.codigo} · ` : '';
     return `${codigoPart}${it.ca ? 'CA '+it.ca : 'Sem CA'}`;
   }
+  if(it.categoria === 'Informática'){
+    return `ICCID ${it.iccid||'—'} · Nº ${it.numero||'—'}`;
+  }
   return `Patrimônio ${it.numero||'—'}`;
 }
 function categoryBadgeClass(cat){
   if(cat==='EPI') return 'badge-cat-epi';
   if(cat==='Ferramental') return 'badge-cat-ferramental';
+  if(cat==='Informática') return 'badge-cat-informatica';
   return 'badge-cat-equipamentos';
 }
 function showToast(msg){
@@ -1163,7 +1237,7 @@ function showToast(msg){
   setTimeout(()=>t.classList.remove('show'), 2200);
 }
 
-const PAGE_TITLES = { home:'Início', employees:'Colaboradores', ficha:'Ficha do colaborador', stock:'Cadastrar itens', items:'Buscar item', users:'Usuários', vale:'Emitir vale' };
+const PAGE_TITLES = { home:'Início', employees:'Colaboradores', ficha:'Ficha do colaborador', stock:'Cadastrar itens', items:'Buscar item', users:'Usuários', vale:'Emitir vale', chip:'Controle de Chip' };
 
 // ---------- view switching ----------
 async function switchView(name){
@@ -1184,6 +1258,7 @@ async function switchView(name){
   if(name==='employees') renderEmployeesList();
   if(name==='stock'){ updateStockCategoryFields(); renderStockTable(); renderEpiCatalogTable(); }
   if(name==='items') renderItemsSearch();
+  if(name==='chip') renderChipTable();
   if(name==='vale'){ if(state.valeEmployeeId) renderValeItemsChecklist(); }
 }
 
@@ -1473,7 +1548,7 @@ function renderFicha(id){
   if(itens.length===0){
     ticketsHtml = `<div class="empty-state"><div class="icon">📦</div><p>Nenhum item registrado para este colaborador.</p></div>`;
   }else if(mode==='separado'){
-    const cats = ['Equipamentos','EPI','Ferramental'];
+    const cats = ['Equipamentos','EPI','Ferramental','Informática'];
     ticketsHtml = cats.map(cat=>{
       const list = itens.filter(i=>(i.categoria||'Equipamentos')===cat);
       return `
@@ -1548,14 +1623,18 @@ async function returnItem(itemId){
   renderHome();
   renderItemsSearch();
   renderStockTable();
+  renderChipTable();
   showToast('Item devolvido.');
   dbUpdateItem(it);
 }
 function updateItemCategoryFields(){
   const cat = document.getElementById('i_categoria_tipo').value;
   const isEpi = cat === 'EPI';
-  document.getElementById('i_numero_wrap').style.display = (cat==='Equipamentos' || cat==='Ferramental') ? 'block' : 'none';
+  const isChip = cat === 'Informática';
+  document.getElementById('i_numero_wrap').style.display = (cat==='Equipamentos' || cat==='Ferramental' || isChip) ? 'block' : 'none';
+  document.getElementById('i_numero_label').textContent = isChip ? 'Número do chip *' : 'Nº de patrimônio *';
   document.getElementById('i_serial_wrap').style.display = (cat==='Ferramental') ? 'block' : 'none';
+  document.getElementById('i_iccid_wrap').style.display = isChip ? 'block' : 'none';
   document.getElementById('i_ca_wrap').style.display = isEpi ? 'block' : 'none';
 }
 function filterItemSearchResults(){
@@ -1662,6 +1741,7 @@ function openItemForm(employeeId, itemId){
     document.getElementById('i_categoria_tipo').value = it?.categoria || 'Equipamentos';
     document.getElementById('i_numero').value = it?.numero || '';
     document.getElementById('i_serial').value = it?.serial || '';
+    document.getElementById('i_iccid').value = it?.iccid || '';
     document.getElementById('i_ca').value = it?.ca || '';
     document.getElementById('i_ca').disabled = false;
     document.getElementById('i_sem_ca').checked = (it?.categoria==='EPI' && !it?.ca);
@@ -1686,8 +1766,9 @@ async function saveItemForm(evt){
     const data = {
       descricao: document.getElementById('i_descricao').value.trim(),
       categoria,
-      numero: (categoria==='Equipamentos' || categoria==='Ferramental') ? document.getElementById('i_numero').value.trim() : null,
+      numero: (categoria==='Equipamentos' || categoria==='Ferramental' || categoria==='Informática') ? document.getElementById('i_numero').value.trim() : null,
       serial: categoria==='Ferramental' ? document.getElementById('i_serial').value.trim() : null,
+      iccid: categoria==='Informática' ? document.getElementById('i_iccid').value.trim() : null,
       ca: categoria==='EPI' ? (semCa ? null : document.getElementById('i_ca').value.trim()) : null,
       estado: document.getElementById('i_estado').value,
       dataEntrega: document.getElementById('i_data').value,
@@ -1696,6 +1777,7 @@ async function saveItemForm(evt){
     if(!data.descricao){ showToast('Preencha a descrição do item.'); return; }
     if((categoria==='Equipamentos' || categoria==='Ferramental') && !data.numero){ showToast('Preencha o número de patrimônio.'); return; }
     if(categoria==='Ferramental' && !data.serial){ showToast('Preencha o número de série.'); return; }
+    if(categoria==='Informática' && (!data.numero || !data.iccid)){ showToast('Preencha o número e o ICCID do chip.'); return; }
     if(categoria==='EPI' && !semCa && !data.ca){ showToast('Preencha o CA ou marque "Sem CA".'); return; }
 
     const it = state.items.find(i=>i.id===state.editingItemId);
@@ -1703,7 +1785,7 @@ async function saveItemForm(evt){
     closeModal('modalItem');
     showToast('Item salvo.');
     if(state.currentEmployeeId) renderFicha(state.currentEmployeeId);
-    renderEmployeesList(); renderHome(); renderStockTable(); renderItemsSearch();
+    renderEmployeesList(); renderHome(); renderStockTable(); renderItemsSearch(); renderChipTable();
     dbUpdateItem(it);
     return;
   }
@@ -1757,7 +1839,7 @@ async function saveItemForm(evt){
   closeModal('modalItem');
   showToast('Item adicionado à ficha.');
   if(state.currentEmployeeId) renderFicha(state.currentEmployeeId);
-  renderEmployeesList(); renderHome(); renderStockTable(); renderItemsSearch();
+  renderEmployeesList(); renderHome(); renderStockTable(); renderItemsSearch(); renderChipTable();
   dbInsertItems([data]);
 }
 async function deleteItem(itemId){
@@ -1770,6 +1852,7 @@ async function deleteItem(itemId){
   renderHome();
   renderStockTable();
   renderItemsSearch();
+  renderChipTable();
   showToast('Item excluído.');
   dbDeleteItem(itemId);
 }
@@ -1924,6 +2007,103 @@ async function saveStockBatch(evt){
   dbInsertItems(newItems);
 }
 
+// ---------- CONTROLE DE CHIP ----------
+async function saveChip(evt){
+  evt.preventDefault();
+  const iccid = document.getElementById('chip_iccid').value.trim();
+  const numero = document.getElementById('chip_numero').value.trim();
+  const operadora = document.getElementById('chip_operadora').value.trim();
+  const dataEntrada = document.getElementById('chip_data').value;
+  const obsText = document.getElementById('chip_obs').value.trim();
+
+  if(!iccid || !numero){
+    showToast('Preencha o ICCID e o número do chip.');
+    return;
+  }
+  const chips = state.items.filter(it=>it.categoria==='Informática');
+  if(chips.some(it=>normalize(it.iccid)===normalize(iccid))){
+    showToast(`Já existe um chip cadastrado com o ICCID "${iccid}".`);
+    return;
+  }
+  if(chips.some(it=>normalize(it.numero)===normalize(numero))){
+    showToast(`Já existe um chip cadastrado com o número "${numero}".`);
+    return;
+  }
+
+  const data = {
+    id: uid(),
+    descricao: operadora ? `Chip ${operadora}` : 'Chip',
+    categoria: 'Informática',
+    numero,
+    iccid,
+    serial: null,
+    ca: null,
+    codigo: null,
+    estado: 'Novo',
+    obs: (operadora ? `Operadora: ${operadora}` : '') + (obsText ? (operadora ? ' | ' : '') + obsText : ''),
+    dataAquisicao: dataEntrada,
+    dataEntrega: null,
+    employeeId: null,
+    status: 'Em estoque'
+  };
+  state.items.push(data);
+  showToast('Chip cadastrado.');
+  document.getElementById('chip_iccid').value = '';
+  document.getElementById('chip_numero').value = '';
+  document.getElementById('chip_operadora').value = '';
+  document.getElementById('chip_data').value = '';
+  document.getElementById('chip_obs').value = '';
+  renderChipTable();
+  renderHome();
+  renderItemsSearch();
+  dbInsertItems([data]);
+}
+function renderChipTable(filter){
+  const wrapEl = document.getElementById('chipTableWrap');
+  if(!wrapEl) return;
+  filter = filter!==undefined ? filter : (document.getElementById('chipSearchInput')?.value || '');
+  const q = normalize(filter);
+  let list = state.items.filter(it=>it.categoria==='Informática').slice().sort((a,b)=>(b.dataAquisicao||'').localeCompare(a.dataAquisicao||''));
+  if(q){
+    list = list.filter(it=>[it.iccid,it.numero,it.obs].some(f=>normalize(f).includes(q)));
+  }
+  document.getElementById('chipCount').textContent = `${list.length} chip(s) cadastrado(s)`;
+  if(list.length===0){
+    wrapEl.innerHTML = `<div class="empty-state">
+      <div class="icon">📶</div>
+      <p>Nenhum chip cadastrado ainda.</p>
+    </div>`;
+    return;
+  }
+  const rows = list.map(it=>{
+    const emp = state.employees.find(e=>e.id===it.employeeId);
+    const badgeClass = it.status==='Devolvido' ? 'badge-devolvido' : (it.status==='Em estoque' ? 'badge-estoque' : 'badge-posse');
+    let actions = '';
+    if(it.status==='Em estoque'){
+      actions += `<button class="btn btn-primary btn-sm" onclick="openAssignModal('${it.id}')">Atribuir</button>`;
+    }
+    if(it.status==='Em posse'){
+      actions += `<button class="btn btn-outline btn-sm" onclick="returnItem('${it.id}')">Devolver</button>`;
+    }
+    if(emp){
+      actions += `<button class="btn btn-outline btn-sm" onclick="openFicha('${emp.id}')">Ver ficha</button>`;
+    }
+    actions += `<button class="btn btn-outline btn-sm" onclick="openItemForm(${emp?`'${emp.id}'`:'null'},'${it.id}')">Editar</button>`;
+    actions += `<button class="btn btn-danger btn-sm" onclick="deleteItem('${it.id}')">Excluir</button>`;
+    return `<tr>
+      <td class="code">${escapeHtml(it.iccid)}</td>
+      <td class="code">${escapeHtml(it.numero)}</td>
+      <td><span class="badge ${badgeClass}">${it.status}</span></td>
+      <td>${emp ? `<a class="name-link" onclick="openFicha('${emp.id}')">${escapeHtml(emp.nome)}</a>` : '<em>Em estoque</em>'}</td>
+      <td class="row-actions">${actions}</td>
+    </tr>`;
+  }).join('');
+  wrapEl.innerHTML = `<table>
+    <thead><tr><th>ICCID</th><th>Número</th><th>Status</th><th>Colaborador</th><th></th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
 function renderEpiCatalogTable(){
   const wrap = document.getElementById('epiCatalogTableWrap');
   const list = state.epiCatalog.slice().sort((a,b)=>a.descricao.localeCompare(b.descricao));
@@ -2070,6 +2250,7 @@ async function confirmAssign(){
   renderStockTable();
   renderHome();
   renderItemsSearch();
+  renderChipTable();
   if(state.currentEmployeeId===empId) renderFicha(empId);
   dbUpdateItem(it);
 }
@@ -2089,8 +2270,8 @@ function renderItemsSearch(filter){
   const wrap = document.getElementById('itemsTableWrap');
   const q = normalize(filter);
 
-  let equipList = state.items.filter(it=>it.categoria==='Equipamentos').slice().sort((a,b)=>(b.dataEntrega||'').localeCompare(a.dataEntrega||''));
-  if(q){ equipList = equipList.filter(it => [it.descricao,it.numero].some(f=>normalize(f).includes(q))); }
+  let equipList = state.items.filter(it=>it.categoria==='Equipamentos' || it.categoria==='Informática').slice().sort((a,b)=>(b.dataEntrega||'').localeCompare(a.dataEntrega||''));
+  if(q){ equipList = equipList.filter(it => [it.descricao,it.numero,it.iccid].some(f=>normalize(f).includes(q))); }
 
   let ferramentalItems = state.items.filter(it=>it.categoria==='Ferramental');
   if(q){ ferramentalItems = ferramentalItems.filter(it => [it.descricao,it.numero,it.serial].some(f=>normalize(f).includes(q))); }
