@@ -536,6 +536,7 @@
                     <option value="Equipamentos">Equipamentos</option>
                     <option value="EPI">EPI</option>
                     <option value="Ferramental">Ferramental</option>
+                    <option value="Informática">Informática</option>
                   </select>
                 </div>
 
@@ -877,7 +878,7 @@
               <option value="Equipamentos">Equipamentos</option>
               <option value="EPI">EPI</option>
               <option value="Ferramental">Ferramental</option>
-              <option value="Informática">Informática (Chip)</option>
+              <option value="Informática">Informática</option>
             </select>
           </div>
           <div class="form-field full" id="i_descricao_wrap">
@@ -893,7 +894,7 @@
             <input type="text" id="i_serial" placeholder="Ex.: SN-88213">
           </div>
           <div class="form-field" id="i_iccid_wrap" style="display:none;">
-            <label>ICCID *</label>
+            <label>ICCID (se for chip)</label>
             <input type="text" id="i_iccid" placeholder="Ex.: 8955010000000000000">
           </div>
           <div class="form-field full" id="i_ca_wrap" style="display:none;">
@@ -1214,21 +1215,31 @@ function fmtDate(d){
   return parts[2]+'/'+parts[1]+'/'+parts[0];
 }
 function formatItemIdentifier(it){
-  if(it.categoria === 'Ferramental') return `Patrimônio ${it.numero||'—'} · Série ${it.serial||'—'}`;
-  if(it.categoria === 'EPI'){
+  const cat = normalize(it.categoria);
+  if(cat === normalize('Ferramental')) return `Patrimônio ${it.numero||'—'} · Série ${it.serial||'—'}`;
+  if(cat === normalize('EPI')){
     const codigoPart = it.codigo ? `Código ${it.codigo} · ` : '';
     return `${codigoPart}${it.ca ? 'CA '+it.ca : 'Sem CA'}`;
   }
-  if(it.categoria === 'Informática'){
-    return `ICCID ${it.iccid||'—'} · Nº ${it.numero||'—'}`;
+  if(cat === normalize('Informática') && it.iccid){
+    return `ICCID ${it.iccid} · Nº ${it.numero||'—'}`;
   }
   return `Patrimônio ${it.numero||'—'}`;
 }
 function categoryBadgeClass(cat){
-  if(cat==='EPI') return 'badge-cat-epi';
-  if(cat==='Ferramental') return 'badge-cat-ferramental';
-  if(cat==='Informática') return 'badge-cat-informatica';
+  const c = normalize(cat);
+  if(c===normalize('EPI')) return 'badge-cat-epi';
+  if(c===normalize('Ferramental')) return 'badge-cat-ferramental';
+  if(c===normalize('Informática')) return 'badge-cat-informatica';
   return 'badge-cat-equipamentos';
+}
+function categoryDisplayLabel(cat){
+  const c = normalize(cat);
+  if(c===normalize('EPI')) return 'EPI';
+  if(c===normalize('Ferramental')) return 'Ferramental';
+  if(c===normalize('Informática')) return 'Informática';
+  if(c===normalize('Equipamentos')) return 'Equipamentos';
+  return cat || '—';
 }
 function showToast(msg){
   const t = document.getElementById('toast');
@@ -1302,7 +1313,7 @@ function filterHomeSearchResults(){
       resultsEl.innerHTML = matches.map(it=>{
         const emp = state.employees.find(e=>e.id===it.employeeId);
         return `<div style="padding:10px 14px;font-size:13.5px;cursor:pointer;border-bottom:1px solid var(--border);" onclick="goToItemFromHome('${it.id}')" onmouseover="this.style.background='#FAFAFA'" onmouseout="this.style.background='#fff'">
-          <span class="badge ${categoryBadgeClass(it.categoria)}" style="margin-right:6px;">${escapeHtml(it.categoria||'—')}</span>
+          <span class="badge ${categoryBadgeClass(it.categoria)}" style="margin-right:6px;">${escapeHtml(categoryDisplayLabel(it.categoria))}</span>
           <strong>${escapeHtml(it.descricao)}</strong>
           <div style="font-size:12px;color:var(--ink-soft);">${formatItemIdentifier(it)} — ${emp ? escapeHtml(emp.nome) : (it.status==='Em estoque' ? 'Em estoque' : 'sem colaborador')}</div>
         </div>`;
@@ -1513,7 +1524,7 @@ function renderTicket(it, emp){
   return `
       <div class="ticket ${it.status==='Devolvido'?'devolvido':''}">
         <div class="ticket-main">
-          <div class="ticket-desc">${escapeHtml(it.descricao)} <span class="badge ${categoryBadgeClass(it.categoria)}" style="margin-left:6px;">${escapeHtml(it.categoria||'—')}</span></div>
+          <div class="ticket-desc">${escapeHtml(it.descricao)} <span class="badge ${categoryBadgeClass(it.categoria)}" style="margin-left:6px;">${escapeHtml(categoryDisplayLabel(it.categoria))}</span></div>
           <div class="ticket-meta">${formatItemIdentifier(it)} · ${escapeHtml(it.estado||'')} · entregue em ${fmtDate(it.dataEntrega)}${it.status==='Devolvido' ? ' · devolvido em '+fmtDate(it.dataDevolucao) : ''}</div>
           ${it.obs ? `<div class="ticket-meta">${escapeHtml(it.obs)}</div>` : ''}
         </div>
@@ -1630,11 +1641,11 @@ async function returnItem(itemId){
 function updateItemCategoryFields(){
   const cat = document.getElementById('i_categoria_tipo').value;
   const isEpi = cat === 'EPI';
-  const isChip = cat === 'Informática';
-  document.getElementById('i_numero_wrap').style.display = (cat==='Equipamentos' || cat==='Ferramental' || isChip) ? 'block' : 'none';
-  document.getElementById('i_numero_label').textContent = isChip ? 'Número do chip *' : 'Nº de patrimônio *';
+  const isInfo = cat === 'Informática';
+  document.getElementById('i_numero_wrap').style.display = (cat==='Equipamentos' || cat==='Ferramental' || isInfo) ? 'block' : 'none';
+  document.getElementById('i_numero_label').textContent = isInfo ? 'Nº de patrimônio (se houver)' : 'Nº de patrimônio *';
   document.getElementById('i_serial_wrap').style.display = (cat==='Ferramental') ? 'block' : 'none';
-  document.getElementById('i_iccid_wrap').style.display = isChip ? 'block' : 'none';
+  document.getElementById('i_iccid_wrap').style.display = isInfo ? 'block' : 'none';
   document.getElementById('i_ca_wrap').style.display = isEpi ? 'block' : 'none';
 }
 function filterItemSearchResults(){
@@ -1777,7 +1788,7 @@ async function saveItemForm(evt){
     if(!data.descricao){ showToast('Preencha a descrição do item.'); return; }
     if((categoria==='Equipamentos' || categoria==='Ferramental') && !data.numero){ showToast('Preencha o número de patrimônio.'); return; }
     if(categoria==='Ferramental' && !data.serial){ showToast('Preencha o número de série.'); return; }
-    if(categoria==='Informática' && (!data.numero || !data.iccid)){ showToast('Preencha o número e o ICCID do chip.'); return; }
+    if(categoria==='Informática' && !data.numero && !data.iccid){ showToast('Preencha o número de patrimônio ou o ICCID.'); return; }
     if(categoria==='EPI' && !semCa && !data.ca){ showToast('Preencha o CA ou marque "Sem CA".'); return; }
 
     const it = state.items.find(i=>i.id===state.editingItemId);
@@ -2154,7 +2165,7 @@ function renderStockTable(){
     <tr>
       <td>${escapeHtml(it.descricao)}</td>
       <td class="code">${formatItemIdentifier(it)}</td>
-      <td><span class="badge ${categoryBadgeClass(it.categoria)}">${escapeHtml(it.categoria||'—')}</span></td>
+      <td><span class="badge ${categoryBadgeClass(it.categoria)}">${escapeHtml(categoryDisplayLabel(it.categoria))}</span></td>
       <td>${escapeHtml(it.estado||'—')}</td>
       <td class="code">${fmtDate(it.dataAquisicao)}</td>
       <td class="row-actions">
@@ -2269,11 +2280,15 @@ function renderItemsSearch(filter){
   filter = filter!==undefined ? filter : (document.getElementById('itemSearchInput')?.value || '');
   const wrap = document.getElementById('itemsTableWrap');
   const q = normalize(filter);
+  const isCat = (val, ref) => normalize(val) === normalize(ref);
 
-  let equipList = state.items.filter(it=>it.categoria==='Equipamentos' || it.categoria==='Informática').slice().sort((a,b)=>(b.dataEntrega||'').localeCompare(a.dataEntrega||''));
+  // Ferramental e EPI (entregas individuais) tem tratamento proprio agrupado;
+  // tudo o mais (Equipamentos, Informatica/chip, e qualquer categoria antiga/livre) aparece individualmente,
+  // assim nenhum item cadastrado antes da padronizacao de categorias fica invisivel.
+  let equipList = state.items.filter(it => !isCat(it.categoria,'Ferramental') && !isCat(it.categoria,'EPI')).slice().sort((a,b)=>(b.dataEntrega||'').localeCompare(a.dataEntrega||''));
   if(q){ equipList = equipList.filter(it => [it.descricao,it.numero,it.iccid].some(f=>normalize(f).includes(q))); }
 
-  let ferramentalItems = state.items.filter(it=>it.categoria==='Ferramental');
+  let ferramentalItems = state.items.filter(it=>isCat(it.categoria,'Ferramental'));
   if(q){ ferramentalItems = ferramentalItems.filter(it => [it.descricao,it.numero,it.serial].some(f=>normalize(f).includes(q))); }
   const ferramentalGroups = groupByDescricao(ferramentalItems);
   state.lastFerramentalGroups = ferramentalGroups;
@@ -2307,7 +2322,7 @@ function renderItemsSearch(filter){
     return `<tr>
       <td>${escapeHtml(it.descricao)}</td>
       <td class="code">${formatItemIdentifier(it)}</td>
-      <td><span class="badge ${categoryBadgeClass(it.categoria)}">${escapeHtml(it.categoria||'—')}</span></td>
+      <td><span class="badge ${categoryBadgeClass(it.categoria)}">${escapeHtml(categoryDisplayLabel(it.categoria))}</span></td>
       <td><span class="badge ${badgeClass}">${it.status||'Em posse'}</span></td>
       <td>${emp ? `<a class="name-link" onclick="openFicha('${emp.id}')">${escapeHtml(emp.nome)}</a>` : '<em>Em estoque</em>'}</td>
       <td class="code">${fmtDate(it.dataEntrega || it.dataAquisicao)}</td>
@@ -2540,7 +2555,7 @@ function renderValeItemsChecklist(){
   wrap.innerHTML = itens.map(it=>`
     <label style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--border);cursor:pointer;">
       <input type="checkbox" class="vale-check" value="${it.id}" onchange="updateValeAdvanceState()" style="width:auto;flex-shrink:0;">
-      <span class="badge ${categoryBadgeClass(it.categoria)}">${escapeHtml(it.categoria||'—')}</span>
+      <span class="badge ${categoryBadgeClass(it.categoria)}">${escapeHtml(categoryDisplayLabel(it.categoria))}</span>
       <span style="flex:1;"><strong>${escapeHtml(it.descricao)}</strong> <span class="code">${formatItemIdentifier(it)}</span></span>
     </label>
   `).join('');
