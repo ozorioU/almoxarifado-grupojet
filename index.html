@@ -502,6 +502,12 @@
         <div id="fichaContainer"></div>
       </div>
 
+      <!-- EPI HISTORY -->
+      <div class="view" id="view-epi-history">
+        <button class="btn btn-outline btn-sm" style="margin-bottom:16px;" onclick="openFicha(state.currentEmployeeId)">← Voltar à ficha</button>
+        <div id="epiHistoryContainer"></div>
+      </div>
+
       <!-- STOCK / CADASTRAR ITENS -->
       <div class="view" id="view-stock">
         <div class="page-head">
@@ -872,10 +878,18 @@
 <!-- MODAL: assign stock item to employee -->
 <div class="modal-overlay" id="modalAssign">
   <div class="modal" style="max-width:420px;">
-    <h3>Atribuir item a um colaborador</h3>
-    <div class="form-field full" style="margin-bottom:18px;">
+    <h3 id="modalAssignTitle">Atribuir item a um colaborador</h3>
+    <div class="form-field full" style="margin-bottom:14px;">
       <label>Colaborador</label>
       <select id="assign_employee"></select>
+    </div>
+    <div class="form-field full" id="assign_ca_wrap" style="display:none;margin-bottom:4px;">
+      <label>CA (Certificado de Aprovação)</label>
+      <input type="text" id="assign_ca" placeholder="Ex.: 12345">
+      <label style="display:flex;align-items:center;gap:7px;margin-top:9px;font-weight:500;font-size:12.5px;color:var(--ink-soft);">
+        <input type="checkbox" id="assign_sem_ca" onchange="toggleAssignSemCa()" style="width:auto;">
+        Entregar sem CA (não possui / não informado)
+      </label>
     </div>
     <div class="modal-actions">
       <button type="button" class="btn btn-outline" onclick="closeModal('modalAssign')">Cancelar</button>
@@ -912,6 +926,38 @@
     <div class="modal-actions">
       <button type="button" class="btn btn-outline" onclick="closeModal('modalUser')">Cancelar</button>
       <button type="button" class="btn btn-primary" onclick="saveUserForm(event)">Salvar usuário</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: group detail (ferramental/EPI) -->
+<div class="modal-overlay" id="modalGroupDetail">
+  <div class="modal" style="max-width:680px;">
+    <h3 id="groupDetailTitle">Detalhes</h3>
+    <div id="groupDetailBody" style="max-height:56vh;overflow-y:auto;"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-outline" onclick="closeModal('modalGroupDetail')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: edit EPI catalog entry -->
+<div class="modal-overlay" id="modalEpiEdit">
+  <div class="modal" style="max-width:420px;">
+    <h3>Editar EPI do catálogo</h3>
+    <div class="form-grid">
+      <div class="form-field full">
+        <label>Descrição *</label>
+        <input type="text" id="epi_edit_descricao">
+      </div>
+      <div class="form-field full">
+        <label>Código *</label>
+        <input type="text" id="epi_edit_codigo">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-outline" onclick="closeModal('modalEpiEdit')">Cancelar</button>
+      <button type="button" class="btn btn-primary" onclick="saveEpiCatalogEdit()">Salvar</button>
     </div>
   </div>
 </div>
@@ -1340,6 +1386,54 @@ async function openFicha(id){
   await switchView('ficha');
   renderFicha(id);
 }
+function openEpiHistory(employeeId){
+  state.currentEmployeeId = employeeId;
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-epi-history').classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
+  document.getElementById('topbarTitle').textContent = 'Histórico de EPI';
+  window.scrollTo(0,0);
+  renderEpiHistory(employeeId);
+}
+function renderEpiHistory(employeeId){
+  const emp = state.employees.find(e=>e.id===employeeId);
+  const container = document.getElementById('epiHistoryContainer');
+  if(!emp){
+    container.innerHTML = '<div class="empty-state"><p>Colaborador não encontrado.</p></div>';
+    return;
+  }
+  const itens = state.items.filter(i=>i.employeeId===employeeId && i.categoria==='EPI').sort((a,b)=>(b.dataEntrega||'').localeCompare(a.dataEntrega||''));
+  let bodyHtml;
+  if(itens.length===0){
+    bodyHtml = `<div class="empty-state"><div class="icon">🦺</div><p>Nenhum EPI recebido por este colaborador ainda.</p></div>`;
+  }else{
+    const rows = itens.map(it=>`
+      <tr>
+        <td>${escapeHtml(it.descricao)}</td>
+        <td class="code">${escapeHtml(it.codigo||'—')}</td>
+        <td class="code">${it.ca ? ('CA '+escapeHtml(it.ca)) : 'Sem CA'}</td>
+        <td>${escapeHtml(it.estado||'—')}</td>
+        <td class="code">${fmtDate(it.dataEntrega)}</td>
+        <td class="code">${it.status==='Devolvido' ? fmtDate(it.dataDevolucao) : '—'}</td>
+        <td><span class="badge ${it.status==='Devolvido'?'badge-devolvido':'badge-posse'}">${it.status}</span></td>
+      </tr>`).join('');
+    bodyHtml = `<div class="card" style="padding:0;overflow-x:auto;"><table>
+      <thead><tr><th>Item</th><th>Código</th><th>CA</th><th>Estado</th><th>Entrega</th><th>Devolução</th><th>Status</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`;
+  }
+  container.innerHTML = `
+    <div class="page-head">
+      <div>
+        <span class="eyebrow" style="display:block;font-family:var(--mono);font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--orange);font-weight:700;margin-bottom:4px;">Histórico completo</span>
+        <h2>EPIs de ${escapeHtml(emp.nome)}</h2>
+        <p>Matrícula ${escapeHtml(emp.matricula)} · ${itens.length} registro(s), incluindo já devolvidos.</p>
+      </div>
+      <button class="btn btn-outline" onclick="printEpiForm('${emp.id}')">📋 Baixar PDF</button>
+    </div>
+    ${bodyHtml}
+  `;
+}
 function renderTicket(it, emp){
   return `
       <div class="ticket ${it.status==='Devolvido'?'devolvido':''}">
@@ -1424,6 +1518,7 @@ function renderFicha(id){
         <button class="btn btn-primary" onclick="openItemForm('${emp.id}')">+ Adicionar item</button>
         <button class="btn btn-outline" onclick="printFicha('${emp.id}')">🖨 Baixar PDF da ficha</button>
         <button class="btn btn-outline" onclick="printEpiForm('${emp.id}')">📋 Ficha de EPI (PDF)</button>
+        <button class="btn btn-outline" onclick="openEpiHistory('${emp.id}')">🦺 Histórico de EPI</button>
         <button class="btn btn-outline" onclick="openEmployeeForm('${emp.id}')">Editar dados</button>
       </div>
 
@@ -1859,6 +1954,7 @@ async function deleteEpiCatalogEntry(id){
   if(!(await customConfirm(`Excluir "${entry.descricao}" (código ${entry.codigo}) do catálogo de EPI? Isso não afeta entregas já registradas.`))) return;
   state.epiCatalog = state.epiCatalog.filter(e=>e.id!==id);
   renderEpiCatalogTable();
+  renderItemsSearch();
   showToast('Removido do catálogo de EPI.');
   dbDeleteEpiCatalog(id);
 }
@@ -1895,6 +1991,9 @@ function renderStockTable(){
 
 function openAssignModal(itemId){
   state.assigningItemId = itemId;
+  state.assigningEpiCatalogId = null;
+  document.getElementById('modalAssignTitle').textContent = 'Atribuir item a um colaborador';
+  document.getElementById('assign_ca_wrap').style.display = 'none';
   const sel = document.getElementById('assign_employee');
   const list = state.employees.slice().sort((a,b)=>a.nome.localeCompare(b.nome));
   if(list.length===0){
@@ -1904,16 +2003,69 @@ function openAssignModal(itemId){
   }
   document.getElementById('modalAssign').classList.add('active');
 }
+function openAssignModalForEpi(epiCatalogId){
+  state.assigningItemId = null;
+  state.assigningEpiCatalogId = epiCatalogId;
+  document.getElementById('modalAssignTitle').textContent = 'Atribuir EPI a um colaborador';
+  document.getElementById('assign_ca_wrap').style.display = 'block';
+  document.getElementById('assign_ca').value = '';
+  document.getElementById('assign_ca').disabled = false;
+  document.getElementById('assign_sem_ca').checked = false;
+  const sel = document.getElementById('assign_employee');
+  const list = state.employees.slice().sort((a,b)=>a.nome.localeCompare(b.nome));
+  if(list.length===0){
+    sel.innerHTML = `<option value="">Nenhum colaborador cadastrado</option>`;
+  }else{
+    sel.innerHTML = list.map(e=>`<option value="${e.id}">${escapeHtml(e.nome)} — ${escapeHtml(e.matricula)}</option>`).join('');
+  }
+  document.getElementById('modalAssign').classList.add('active');
+}
+function toggleAssignSemCa(){
+  const checked = document.getElementById('assign_sem_ca').checked;
+  document.getElementById('assign_ca').disabled = checked;
+  if(checked) document.getElementById('assign_ca').value = '';
+}
 async function confirmAssign(){
   const empId = document.getElementById('assign_employee').value;
   if(!empId){ showToast('Selecione um colaborador.'); return; }
+  const emp = state.employees.find(e=>e.id===empId);
+
+  if(state.assigningEpiCatalogId){
+    const entry = state.epiCatalog.find(e=>e.id===state.assigningEpiCatalogId);
+    if(!entry) return;
+    const semCa = document.getElementById('assign_sem_ca').checked;
+    const ca = semCa ? null : document.getElementById('assign_ca').value.trim();
+    if(!semCa && !ca){ showToast('Preencha o CA ou marque "Entregar sem CA".'); return; }
+    const data = {
+      id: uid(),
+      descricao: entry.descricao,
+      codigo: entry.codigo,
+      categoria: 'EPI',
+      numero: null,
+      serial: null,
+      ca,
+      estado: 'Novo',
+      obs: '',
+      dataEntrega: todayStr(),
+      employeeId: empId,
+      status: 'Em posse'
+    };
+    state.items.push(data);
+    closeModal('modalAssign');
+    showToast(`Item atribuído a ${emp ? emp.nome : 'colaborador'}.`);
+    renderHome();
+    renderItemsSearch();
+    if(state.currentEmployeeId===empId) renderFicha(empId);
+    dbInsertItems([data]);
+    return;
+  }
+
   const it = state.items.find(i=>i.id===state.assigningItemId);
   if(!it) return;
   it.employeeId = empId;
   it.status = 'Em posse';
   it.dataEntrega = todayStr();
   closeModal('modalAssign');
-  const emp = state.employees.find(e=>e.id===empId);
   showToast(`Item atribuído a ${emp ? emp.nome : 'colaborador'}.`);
   renderStockTable();
   renderHome();
@@ -1923,22 +2075,40 @@ async function confirmAssign(){
 }
 
 // ---------- ITEMS SEARCH VIEW ----------
+function groupByDescricao(items){
+  const map = new Map();
+  items.forEach(it=>{
+    const key = normalize(it.descricao);
+    if(!map.has(key)) map.set(key, { descricao: it.descricao, units: [] });
+    map.get(key).units.push(it);
+  });
+  return [...map.values()].sort((a,b)=>a.descricao.localeCompare(b.descricao));
+}
 function renderItemsSearch(filter){
   filter = filter!==undefined ? filter : (document.getElementById('itemSearchInput')?.value || '');
   const wrap = document.getElementById('itemsTableWrap');
   const q = normalize(filter);
-  let list = state.items.slice().sort((a,b)=>(b.dataEntrega||'').localeCompare(a.dataEntrega||''));
-  if(q){
-    list = list.filter(it => [it.descricao,it.numero,it.serial,it.ca,it.codigo,it.categoria].some(f=>normalize(f).includes(q)));
-  }
-  if(list.length===0){
+
+  let equipList = state.items.filter(it=>it.categoria==='Equipamentos').slice().sort((a,b)=>(b.dataEntrega||'').localeCompare(a.dataEntrega||''));
+  if(q){ equipList = equipList.filter(it => [it.descricao,it.numero].some(f=>normalize(f).includes(q))); }
+
+  let ferramentalItems = state.items.filter(it=>it.categoria==='Ferramental');
+  if(q){ ferramentalItems = ferramentalItems.filter(it => [it.descricao,it.numero,it.serial].some(f=>normalize(f).includes(q))); }
+  const ferramentalGroups = groupByDescricao(ferramentalItems);
+  state.lastFerramentalGroups = ferramentalGroups;
+
+  let epiList = state.epiCatalog.slice().sort((a,b)=>a.descricao.localeCompare(b.descricao));
+  if(q){ epiList = epiList.filter(e => [e.descricao, e.codigo].some(f=>normalize(f).includes(q))); }
+
+  if(equipList.length===0 && ferramentalGroups.length===0 && epiList.length===0){
     wrap.innerHTML = `<div class="empty-state">
       <div class="icon">🔎</div>
-      <p>${state.items.length===0 ? 'Nenhum item cadastrado ainda. Adicione itens dentro da ficha de um colaborador.' : 'Nenhum item encontrado para essa busca.'}</p>
+      <p>${(state.items.length===0 && state.epiCatalog.length===0) ? 'Nenhum item cadastrado ainda. Adicione itens em "Cadastrar itens".' : 'Nenhum item encontrado para essa busca.'}</p>
     </div>`;
     return;
   }
-  const rows = list.map(it=>{
+
+  const equipRows = equipList.map(it=>{
     const emp = state.employees.find(e=>e.id===it.employeeId);
     const badgeClass = it.status==='Devolvido' ? 'badge-devolvido' : (it.status==='Em estoque' ? 'badge-estoque' : 'badge-posse');
     let actions = '';
@@ -1963,10 +2133,144 @@ function renderItemsSearch(filter){
       <td class="row-actions">${actions}</td>
     </tr>`;
   }).join('');
+
+  const ferramentalRows = ferramentalGroups.map((g,idx)=>{
+    const estoque = g.units.filter(u=>u.status==='Em estoque').length;
+    const posse = g.units.filter(u=>u.status==='Em posse').length;
+    return `<tr>
+      <td>${escapeHtml(g.descricao)}</td>
+      <td class="code">${g.units.length} unidade(s)</td>
+      <td><span class="badge ${categoryBadgeClass('Ferramental')}">Ferramental</span></td>
+      <td><span class="badge badge-estoque">${estoque} em estoque</span> <span class="badge badge-posse">${posse} em posse</span></td>
+      <td><em>${posse} colaborador(es)</em></td>
+      <td class="code">—</td>
+      <td class="row-actions">
+        <button class="btn btn-primary btn-sm" onclick="quickAssignGroup(${idx})">Atribuir</button>
+        <button class="btn btn-outline btn-sm" onclick="openGroupDetail('Ferramental',${idx})">Ver detalhes</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  const epiRows = epiList.map(e=>{
+    const posse = state.items.filter(it=>it.categoria==='EPI' && it.codigo===e.codigo && it.status==='Em posse').length;
+    return `<tr>
+      <td>${escapeHtml(e.descricao)}</td>
+      <td class="code">Código ${escapeHtml(e.codigo)}</td>
+      <td><span class="badge ${categoryBadgeClass('EPI')}">EPI</span></td>
+      <td><span class="badge badge-estoque">Disponível</span></td>
+      <td><em>${posse} colaborador(es)</em></td>
+      <td class="code">—</td>
+      <td class="row-actions">
+        <button class="btn btn-primary btn-sm" onclick="openAssignModalForEpi('${e.id}')">Atribuir</button>
+        <button class="btn btn-outline btn-sm" onclick="openGroupDetail('EPI','${e.id}')">Ver detalhes</button>
+        <button class="btn btn-outline btn-sm" onclick="openEpiCatalogEditModal('${e.id}')">Editar</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteEpiCatalogEntry('${e.id}')">Excluir</button>
+      </td>
+    </tr>`;
+  }).join('');
+
   wrap.innerHTML = `<table>
-    <thead><tr><th>Item</th><th>Identificação</th><th>Categoria</th><th>Status</th><th>Colaborador</th><th>Entrega</th><th></th></tr></thead>
-    <tbody>${rows}</tbody>
+    <thead><tr><th>Item</th><th>Identificação</th><th>Categoria</th><th>Status</th><th>Colaborador(es)</th><th>Entrega</th><th></th></tr></thead>
+    <tbody>${equipRows}${ferramentalRows}${epiRows}</tbody>
   </table>`;
+}
+function quickAssignGroup(idx){
+  const group = state.lastFerramentalGroups[idx];
+  if(!group) return;
+  const available = group.units.filter(u=>u.status==='Em estoque');
+  if(available.length===0){ showToast('Nenhuma unidade em estoque para atribuir. Veja os detalhes para checar quem está com elas.'); return; }
+  if(available.length===1){ openAssignModal(available[0].id); return; }
+  openGroupDetail('Ferramental', idx);
+  showToast('Há mais de uma unidade disponível — escolha qual atribuir na lista.');
+}
+function openGroupDetail(kind, key){
+  const modal = document.getElementById('modalGroupDetail');
+  const body = document.getElementById('groupDetailBody');
+  state.lastGroupDetailKind = kind;
+  state.lastGroupDetailKey = key;
+
+  if(kind === 'Ferramental'){
+    const group = state.lastFerramentalGroups[key];
+    if(!group) return;
+    document.getElementById('groupDetailTitle').textContent = group.descricao;
+    const units = group.units.slice().sort((a,b)=>(b.dataEntrega||'').localeCompare(a.dataEntrega||''));
+    const rows = units.map(it=>{
+      const emp = state.employees.find(e=>e.id===it.employeeId);
+      const badgeClass = it.status==='Devolvido' ? 'badge-devolvido' : (it.status==='Em estoque' ? 'badge-estoque' : 'badge-posse');
+      let actions = '';
+      if(it.status==='Em estoque') actions += `<button class="btn btn-primary btn-sm" onclick="closeModal('modalGroupDetail');openAssignModal('${it.id}')">Atribuir</button>`;
+      if(it.status==='Em posse') actions += `<button class="btn btn-outline btn-sm" onclick="returnItem('${it.id}');openGroupDetailRefresh()">Devolver</button>`;
+      if(emp) actions += `<button class="btn btn-outline btn-sm" onclick="closeModal('modalGroupDetail');openFicha('${emp.id}')">Ver ficha</button>`;
+      actions += `<button class="btn btn-outline btn-sm" onclick="closeModal('modalGroupDetail');openItemForm(${emp?`'${emp.id}'`:'null'},'${it.id}')">Editar</button>`;
+      actions += `<button class="btn btn-danger btn-sm" onclick="deleteItem('${it.id}');openGroupDetailRefresh()">Excluir</button>`;
+      return `<tr>
+        <td class="code">${formatItemIdentifier(it)}</td>
+        <td><span class="badge ${badgeClass}">${it.status}</span></td>
+        <td>${emp ? `<a class="name-link" onclick="closeModal('modalGroupDetail');openFicha('${emp.id}')">${escapeHtml(emp.nome)}</a>` : '—'}</td>
+        <td class="code">${fmtDate(it.dataEntrega)}</td>
+        <td class="row-actions">${actions}</td>
+      </tr>`;
+    }).join('');
+    body.innerHTML = `<table><thead><tr><th>Identificação</th><th>Status</th><th>Colaborador</th><th>Entrega</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  }else{
+    const entry = state.epiCatalog.find(e=>e.id===key);
+    if(!entry) return;
+    document.getElementById('groupDetailTitle').textContent = `${entry.descricao} (código ${entry.codigo})`;
+    const deliveries = state.items.filter(it=>it.categoria==='EPI' && it.codigo===entry.codigo).sort((a,b)=>(b.dataEntrega||'').localeCompare(a.dataEntrega||''));
+    if(deliveries.length===0){
+      body.innerHTML = `<div class="empty-state"><p>Nenhuma entrega registrada para este EPI ainda.</p></div>`;
+    }else{
+      const rows = deliveries.map(it=>{
+        const emp = state.employees.find(e=>e.id===it.employeeId);
+        const badgeClass = it.status==='Devolvido' ? 'badge-devolvido' : 'badge-posse';
+        let actions = '';
+        if(it.status==='Em posse') actions += `<button class="btn btn-outline btn-sm" onclick="returnItem('${it.id}');openGroupDetailRefresh()">Devolver</button>`;
+        if(emp) actions += `<button class="btn btn-outline btn-sm" onclick="closeModal('modalGroupDetail');openFicha('${emp.id}')">Ver ficha</button>`;
+        actions += `<button class="btn btn-danger btn-sm" onclick="deleteItem('${it.id}');openGroupDetailRefresh()">Excluir</button>`;
+        return `<tr>
+          <td>${emp ? `<a class="name-link" onclick="closeModal('modalGroupDetail');openFicha('${emp.id}')">${escapeHtml(emp.nome)}</a>` : '—'}</td>
+          <td class="code">${it.ca ? ('CA '+escapeHtml(it.ca)) : 'Sem CA'}</td>
+          <td><span class="badge ${badgeClass}">${it.status}</span></td>
+          <td class="code">${fmtDate(it.dataEntrega)}</td>
+          <td class="code">${it.status==='Devolvido' ? fmtDate(it.dataDevolucao) : '—'}</td>
+          <td class="row-actions">${actions}</td>
+        </tr>`;
+      }).join('');
+      body.innerHTML = `<table><thead><tr><th>Colaborador</th><th>CA</th><th>Status</th><th>Entrega</th><th>Devolução</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+    }
+  }
+  modal.classList.add('active');
+}
+function openGroupDetailRefresh(){
+  renderItemsSearch();
+  renderHome();
+  if(state.currentEmployeeId) renderFicha(state.currentEmployeeId);
+  openGroupDetail(state.lastGroupDetailKind, state.lastGroupDetailKey);
+}
+function openEpiCatalogEditModal(id){
+  const entry = state.epiCatalog.find(e=>e.id===id);
+  if(!entry) return;
+  state.editingEpiCatalogId = id;
+  document.getElementById('epi_edit_descricao').value = entry.descricao;
+  document.getElementById('epi_edit_codigo').value = entry.codigo;
+  document.getElementById('modalEpiEdit').classList.add('active');
+}
+async function saveEpiCatalogEdit(){
+  const descricao = document.getElementById('epi_edit_descricao').value.trim();
+  const codigo = document.getElementById('epi_edit_codigo').value.trim();
+  if(!descricao || !codigo){ showToast('Preencha descrição e código.'); return; }
+  const entry = state.epiCatalog.find(e=>e.id===state.editingEpiCatalogId);
+  if(!entry) return;
+  const dup = state.epiCatalog.find(e=>e.id!==entry.id && normalize(e.codigo)===normalize(codigo));
+  if(dup){ showToast(`Já existe um EPI com o código "${codigo}".`); return; }
+  entry.descricao = descricao;
+  entry.codigo = codigo;
+  closeModal('modalEpiEdit');
+  showToast('EPI atualizado.');
+  renderEpiCatalogTable();
+  renderItemsSearch();
+  const { error } = await sb.from('epi_catalog').update({ descricao, codigo }).eq('id', entry.id);
+  if(error) showToast('Erro ao salvar: ' + error.message);
 }
 
 // ---------- MODALS ----------
