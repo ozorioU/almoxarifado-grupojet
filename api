@@ -1,0 +1,30 @@
+// Funcao serverless (Vercel) que consulta a validade de um CA de EPI.
+// Roda no servidor, entao nao sofre bloqueio de CORS do navegador.
+export default async function handler(req, res) {
+  const numero = req.query.numero;
+
+  if (!numero) {
+    return res.status(400).json({ error: 'Parametro "numero" e obrigatorio.' });
+  }
+
+  const numeroLimpo = String(numero).replace(/\D/g, '');
+  if (!numeroLimpo) {
+    return res.status(400).json({ error: 'Numero de CA invalido.' });
+  }
+
+  try {
+    const resp = await fetch(`https://projeto-ca-api.rj.r.appspot.com/api/ca/${numeroLimpo}`, {
+      signal: AbortSignal.timeout(9000)
+    });
+
+    if (!resp.ok) {
+      return res.status(resp.status).json({ error: `Servico externo respondeu ${resp.status}` });
+    }
+
+    const data = await resp.json();
+    res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate');
+    return res.status(200).json(data);
+  } catch (e) {
+    return res.status(502).json({ error: 'Falha ao consultar o servico externo de CA.', detalhe: String(e && e.message ? e.message : e) });
+  }
+}
