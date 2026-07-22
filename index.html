@@ -1345,8 +1345,11 @@ function formatItemIdentifier(it){
     const codigoPart = it.codigo ? `Código ${it.codigo} · ` : '';
     return `${codigoPart}${it.ca ? 'CA '+it.ca : 'Sem CA'}`;
   }
-  if(cat === normalize('Informática') && it.iccid){
-    return `ICCID ${it.iccid}${it.numero ? ' · Nº '+it.numero : ''}`;
+  if(cat === normalize('Informática')){
+    const parts = [];
+    if(it.iccid) parts.push(`ICCID ${it.iccid}`);
+    if(it.numero) parts.push(`Nº ${it.numero}`);
+    return parts.length ? parts.join(' · ') : '—';
   }
   const parts = [];
   if(it.numero) parts.push(`Patrimônio ${it.numero}`);
