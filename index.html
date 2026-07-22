@@ -466,7 +466,14 @@
 
       <!-- HOME -->
       <div class="view active" id="view-home">
-        <div style="max-width:620px;margin:48px auto 0;">
+        <div class="card" id="homeAlertsCard" style="display:none;border-color:#FBD9AE;max-width:900px;margin:0 auto 24px;">
+          <div class="card-head" style="background:#FFF8EF;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#B45309" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <h3 style="color:#92400E;">EPIs vencidos ou próximos do vencimento</h3>
+          </div>
+          <div class="card-body" id="homeAlertsBody" style="padding-top:6px;"></div>
+        </div>
+        <div style="max-width:620px;margin:0 auto;">
           <div style="text-align:center;margin-bottom:22px;">
             <h2 style="font-size:22px;font-weight:800;margin-bottom:6px;">O que você procura?</h2>
             <p style="color:var(--ink-soft);font-size:13.5px;margin:0;">Busque um colaborador para ver a ficha completa, ou um item para ver quem está com ele.</p>
@@ -886,11 +893,11 @@
             <input type="text" id="i_descricao" placeholder="Ex.: Notebook Dell Latitude 5420">
           </div>
           <div class="form-field" id="i_numero_wrap">
-            <label id="i_numero_label">Nº de patrimônio *</label>
+            <label id="i_numero_label">Nº de patrimônio (opcional)</label>
             <input type="text" id="i_numero" placeholder="Ex.: NP-0234">
           </div>
           <div class="form-field" id="i_serial_wrap" style="display:none;">
-            <label>Número de série *</label>
+            <label id="i_serial_label">Número de série (opcional)</label>
             <input type="text" id="i_serial" placeholder="Ex.: SN-88213">
           </div>
           <div class="form-field" id="i_iccid_wrap" style="display:none;">
@@ -899,7 +906,16 @@
           </div>
           <div class="form-field full" id="i_ca_wrap" style="display:none;">
             <label>CA (Certificado de Aprovação)</label>
-            <input type="text" id="i_ca" placeholder="Ex.: 12345">
+            <div style="display:flex;gap:8px;">
+              <input type="text" id="i_ca" placeholder="Ex.: 12345" style="flex:1;" onblur="autoConsultarCa('i_ca','i_ca_validade','i_ca_situacao_info')">
+              <button type="button" class="btn btn-outline btn-sm" onclick="autoConsultarCa('i_ca','i_ca_validade','i_ca_situacao_info')">Consultar</button>
+            </div>
+            <div id="i_ca_situacao_info" class="code" style="font-size:12px;margin-top:6px;color:var(--ink-faint);">Consulta automática ao sair do campo, ou clique em "Consultar".</div>
+            <input type="hidden" id="i_ca_situacao">
+            <div class="form-field" style="margin-top:10px;margin-bottom:0;">
+              <label>Validade do CA (preenchida automaticamente, ou digite manualmente)</label>
+              <input type="date" id="i_ca_validade">
+            </div>
             <label style="display:flex;align-items:center;gap:7px;margin-top:9px;font-weight:500;font-size:12.5px;color:var(--ink-soft);">
               <input type="checkbox" id="i_sem_ca" onchange="toggleSemCa()" style="width:auto;">
               Sem CA
@@ -912,7 +928,16 @@
       <div class="form-grid" id="itemCommonFields" style="display:none;margin-top:6px;">
         <div class="form-field full" id="add_ca_wrap" style="display:none;">
           <label>CA (Certificado de Aprovação)</label>
-          <input type="text" id="i_ca_add" placeholder="Ex.: 12345">
+          <div style="display:flex;gap:8px;">
+            <input type="text" id="i_ca_add" placeholder="Ex.: 12345" style="flex:1;" onblur="autoConsultarCa('i_ca_add','i_ca_add_validade','i_ca_add_situacao_info')">
+            <button type="button" class="btn btn-outline btn-sm" onclick="autoConsultarCa('i_ca_add','i_ca_add_validade','i_ca_add_situacao_info')">Consultar</button>
+          </div>
+          <div id="i_ca_add_situacao_info" class="code" style="font-size:12px;margin-top:6px;color:var(--ink-faint);">Consulta automática ao sair do campo, ou clique em "Consultar".</div>
+          <input type="hidden" id="i_ca_add_situacao">
+          <div class="form-field" style="margin-top:10px;margin-bottom:0;">
+            <label>Validade do CA (automática ou manual)</label>
+            <input type="date" id="i_ca_add_validade">
+          </div>
           <label style="display:flex;align-items:center;gap:7px;margin-top:9px;font-weight:500;font-size:12.5px;color:var(--ink-soft);">
             <input type="checkbox" id="i_sem_ca_add" onchange="toggleSemCaAdd()" style="width:auto;">
             Entregar sem CA (não possui / não informado)
@@ -946,19 +971,47 @@
 
 <!-- MODAL: assign stock item to employee -->
 <div class="modal-overlay" id="modalAssign">
-  <div class="modal" style="max-width:420px;">
+  <div class="modal" style="max-width:460px;">
     <h3 id="modalAssignTitle">Atribuir item a um colaborador</h3>
     <div class="form-field full" style="margin-bottom:14px;">
       <label>Colaborador</label>
       <select id="assign_employee"></select>
     </div>
-    <div class="form-field full" id="assign_ca_wrap" style="display:none;margin-bottom:4px;">
+    <div class="form-field full" id="assign_ca_wrap" style="display:none;margin-bottom:14px;">
       <label>CA (Certificado de Aprovação)</label>
-      <input type="text" id="assign_ca" placeholder="Ex.: 12345">
+      <div style="display:flex;gap:8px;">
+        <input type="text" id="assign_ca" placeholder="Ex.: 12345" style="flex:1;" onblur="autoConsultarCa('assign_ca','assign_ca_validade','assign_ca_situacao_info')">
+        <button type="button" class="btn btn-outline btn-sm" onclick="autoConsultarCa('assign_ca','assign_ca_validade','assign_ca_situacao_info')">Consultar</button>
+      </div>
+      <div id="assign_ca_situacao_info" class="code" style="font-size:12px;margin-top:6px;color:var(--ink-faint);">Consulta automática ao sair do campo, ou clique em "Consultar".</div>
+      <input type="hidden" id="assign_ca_situacao">
+      <div class="form-field" style="margin-top:10px;margin-bottom:0;">
+        <label>Validade do CA (automática ou manual)</label>
+        <input type="date" id="assign_ca_validade">
+      </div>
       <label style="display:flex;align-items:center;gap:7px;margin-top:9px;font-weight:500;font-size:12.5px;color:var(--ink-soft);">
         <input type="checkbox" id="assign_sem_ca" onchange="toggleAssignSemCa()" style="width:auto;">
         Entregar sem CA (não possui / não informado)
       </label>
+    </div>
+    <div class="form-grid">
+      <div class="form-field">
+        <label>Estado</label>
+        <select id="assign_estado">
+          <option>Novo</option>
+          <option>Bom</option>
+          <option>Usado</option>
+          <option>Danificado</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label>Data de entrega</label>
+        <input type="date" id="assign_data">
+      </div>
+      <div class="form-field full">
+        <label>Observações</label>
+        <textarea id="assign_obs" rows="2"></textarea>
+      </div>
     </div>
     <div class="modal-actions">
       <button type="button" class="btn btn-outline" onclick="closeModal('modalAssign')">Cancelar</button>
@@ -1086,6 +1139,8 @@ function itemToRow(it){
     numero: it.numero || null,
     serial: it.serial || null,
     ca: it.ca || null,
+    ca_validade: it.caValidade || null,
+    ca_situacao: it.caSituacao || null,
     codigo: it.codigo || null,
     iccid: it.iccid || null,
     categoria: it.categoria || null,
@@ -1105,6 +1160,8 @@ function rowToItem(row){
     numero: row.numero,
     serial: row.serial,
     ca: row.ca,
+    caValidade: row.ca_validade,
+    caSituacao: row.ca_situacao,
     codigo: row.codigo,
     iccid: row.iccid,
     categoria: row.categoria,
@@ -1214,17 +1271,78 @@ function fmtDate(d){
   if(parts.length!==3) return d;
   return parts[2]+'/'+parts[1]+'/'+parts[0];
 }
+function parseBRDateToISO(str){
+  if(!str) return null;
+  const m = String(str).match(/(\d{2})\/(\d{2})\/(\d{4})/);
+  if(!m) return null;
+  return `${m[3]}-${m[2]}-${m[1]}`;
+}
+async function consultarValidadeCA(numeroCA){
+  if(!numeroCA) return null;
+  try{
+    const controller = new AbortController();
+    const timeout = setTimeout(()=>controller.abort(), 8000);
+    const resp = await fetch(`https://projeto-ca-api.rj.r.appspot.com/api/ca/${encodeURIComponent(numeroCA)}`, { signal: controller.signal });
+    clearTimeout(timeout);
+    if(!resp.ok) return null;
+    const data = await resp.json();
+    if(!data || (!data.DataValidade && !data.Situacao)) return null;
+    return {
+      validadeBR: data.DataValidade || null,
+      validadeISO: parseBRDateToISO(data.DataValidade),
+      situacao: data.Situacao || null,
+      equipamento: data.NomeEquipamento || data.DescricaoEquipamento || null
+    };
+  }catch(e){
+    return null;
+  }
+}
+function diasParaVencer(isoDate){
+  if(!isoDate) return null;
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const alvo = new Date(isoDate+'T00:00:00');
+  return Math.round((alvo - hoje) / 86400000);
+}
+function caStatusInfo(it){
+  if(!it.caValidade) return null;
+  const dias = diasParaVencer(it.caValidade);
+  if(dias < 0) return { cor:'var(--red)', texto:`CA vencido em ${fmtDate(it.caValidade)}` };
+  if(dias <= 60) return { cor:'#B45309', texto:`CA vence em ${dias} dia(s) (${fmtDate(it.caValidade)})` };
+  return { cor:'var(--green)', texto:`CA válido até ${fmtDate(it.caValidade)}` };
+}
+async function autoConsultarCa(caInputId, validadeInputId, situacaoInfoId){
+  const numero = document.getElementById(caInputId).value.trim();
+  const infoEl = document.getElementById(situacaoInfoId);
+  const situacaoHiddenEl = document.getElementById(situacaoInfoId.replace('_info',''));
+  if(!numero){ return; }
+  infoEl.textContent = 'Consultando validade...';
+  infoEl.style.color = 'var(--ink-faint)';
+  const result = await consultarValidadeCA(numero);
+  if(!result || !result.validadeISO){
+    infoEl.textContent = 'Não encontrado automaticamente — preencha a validade manualmente, se souber.';
+    infoEl.style.color = 'var(--ink-faint)';
+    if(situacaoHiddenEl) situacaoHiddenEl.value = '';
+    return;
+  }
+  document.getElementById(validadeInputId).value = result.validadeISO;
+  if(situacaoHiddenEl) situacaoHiddenEl.value = result.situacao || '';
+  const vencido = (result.situacao||'').toUpperCase().includes('VENCIDO');
+  infoEl.textContent = `${result.situacao || 'Consultado'} — validade ${result.validadeBR}${result.equipamento ? ' · '+result.equipamento : ''}`;
+  infoEl.style.color = vencido ? 'var(--red)' : 'var(--green)';
+}
 function formatItemIdentifier(it){
   const cat = normalize(it.categoria);
-  if(cat === normalize('Ferramental')) return `Patrimônio ${it.numero||'—'} · Série ${it.serial||'—'}`;
   if(cat === normalize('EPI')){
     const codigoPart = it.codigo ? `Código ${it.codigo} · ` : '';
     return `${codigoPart}${it.ca ? 'CA '+it.ca : 'Sem CA'}`;
   }
   if(cat === normalize('Informática') && it.iccid){
-    return `ICCID ${it.iccid} · Nº ${it.numero||'—'}`;
+    return `ICCID ${it.iccid}${it.numero ? ' · Nº '+it.numero : ''}`;
   }
-  return `Patrimônio ${it.numero||'—'}`;
+  const parts = [];
+  if(it.numero) parts.push(`Patrimônio ${it.numero}`);
+  if(it.serial) parts.push(`Série ${it.serial}`);
+  return parts.length ? parts.join(' · ') : '—';
 }
 function categoryBadgeClass(cat){
   const c = normalize(cat);
@@ -1343,7 +1461,38 @@ function runHomeSearch(){
   }
 }
 function renderHome(){
-  // tela inicial simplificada: nada para renderizar alem da busca
+  renderHomeAlerts();
+}
+function getEpiAlerts(){
+  return state.items
+    .filter(it => normalize(it.categoria)===normalize('EPI') && it.status==='Em posse' && it.caValidade)
+    .map(it => ({ it, dias: diasParaVencer(it.caValidade) }))
+    .filter(a => a.dias !== null && a.dias <= 60)
+    .sort((a,b) => a.dias - b.dias);
+}
+function renderHomeAlerts(){
+  const card = document.getElementById('homeAlertsCard');
+  const body = document.getElementById('homeAlertsBody');
+  if(!card || !body) return;
+  const alerts = getEpiAlerts();
+  if(alerts.length===0){
+    card.style.display = 'none';
+    return;
+  }
+  card.style.display = 'block';
+  body.innerHTML = alerts.map(a=>{
+    const emp = state.employees.find(e=>e.id===a.it.employeeId);
+    const vencido = a.dias < 0;
+    const cor = vencido ? 'var(--red)' : '#B45309';
+    const situacaoTexto = vencido ? `Vencido há ${Math.abs(a.dias)} dia(s)` : `Vence em ${a.dias} dia(s)`;
+    return `<div class="status-row">
+      <div class="label">
+        <span style="font-size:16px;">${vencido ? '🔴' : '🟠'}</span>
+        <span>${emp ? `<a class="name-link" onclick="openFicha('${emp.id}')">${escapeHtml(emp.nome)}</a>` : '—'} — ${escapeHtml(a.it.descricao)} <span class="code">(CA ${escapeHtml(a.it.ca||'—')})</span></span>
+      </div>
+      <div class="value" style="color:${cor};font-size:12.5px;">${situacaoTexto} · ${fmtDate(a.it.caValidade)}</div>
+    </div>`;
+  }).join('');
 }
 
 // ---------- EMPLOYEES LIST ----------
@@ -1493,18 +1642,21 @@ function renderEpiHistory(employeeId){
   if(itens.length===0){
     bodyHtml = `<div class="empty-state"><div class="icon">🦺</div><p>Nenhum EPI recebido por este colaborador ainda.</p></div>`;
   }else{
-    const rows = itens.map(it=>`
+    const rows = itens.map(it=>{
+      const caInfo = it.status!=='Devolvido' ? caStatusInfo(it) : null;
+      return `
       <tr>
         <td>${escapeHtml(it.descricao)}</td>
         <td class="code">${escapeHtml(it.codigo||'—')}</td>
         <td class="code">${it.ca ? ('CA '+escapeHtml(it.ca)) : 'Sem CA'}</td>
+        <td class="code" style="${caInfo ? 'color:'+caInfo.cor+';font-weight:600;' : ''}">${caInfo ? fmtDate(it.caValidade) : (it.caValidade ? fmtDate(it.caValidade) : '—')}</td>
         <td>${escapeHtml(it.estado||'—')}</td>
         <td class="code">${fmtDate(it.dataEntrega)}</td>
         <td class="code">${it.status==='Devolvido' ? fmtDate(it.dataDevolucao) : '—'}</td>
         <td><span class="badge ${it.status==='Devolvido'?'badge-devolvido':'badge-posse'}">${it.status}</span></td>
-      </tr>`).join('');
+      </tr>`;}).join('');
     bodyHtml = `<div class="card" style="padding:0;overflow-x:auto;"><table>
-      <thead><tr><th>Item</th><th>Código</th><th>CA</th><th>Estado</th><th>Entrega</th><th>Devolução</th><th>Status</th></tr></thead>
+      <thead><tr><th>Item</th><th>Código</th><th>CA</th><th>Validade do CA</th><th>Estado</th><th>Entrega</th><th>Devolução</th><th>Status</th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>`;
   }
@@ -1521,11 +1673,13 @@ function renderEpiHistory(employeeId){
   `;
 }
 function renderTicket(it, emp){
+  const caInfo = it.status!=='Devolvido' ? caStatusInfo(it) : null;
   return `
       <div class="ticket ${it.status==='Devolvido'?'devolvido':''}">
         <div class="ticket-main">
           <div class="ticket-desc">${escapeHtml(it.descricao)} <span class="badge ${categoryBadgeClass(it.categoria)}" style="margin-left:6px;">${escapeHtml(categoryDisplayLabel(it.categoria))}</span></div>
           <div class="ticket-meta">${formatItemIdentifier(it)} · ${escapeHtml(it.estado||'')} · entregue em ${fmtDate(it.dataEntrega)}${it.status==='Devolvido' ? ' · devolvido em '+fmtDate(it.dataDevolucao) : ''}</div>
+          ${caInfo ? `<div class="ticket-meta" style="color:${caInfo.cor};font-weight:600;">${caInfo.texto}</div>` : ''}
           ${it.obs ? `<div class="ticket-meta">${escapeHtml(it.obs)}</div>` : ''}
         </div>
         <div class="ticket-actions">
@@ -1642,9 +1796,10 @@ function updateItemCategoryFields(){
   const cat = document.getElementById('i_categoria_tipo').value;
   const isEpi = cat === 'EPI';
   const isInfo = cat === 'Informática';
-  document.getElementById('i_numero_wrap').style.display = (cat==='Equipamentos' || cat==='Ferramental' || isInfo) ? 'block' : 'none';
-  document.getElementById('i_numero_label').textContent = isInfo ? 'Nº de patrimônio (se houver)' : 'Nº de patrimônio *';
-  document.getElementById('i_serial_wrap').style.display = (cat==='Ferramental') ? 'block' : 'none';
+  document.getElementById('i_numero_wrap').style.display = isEpi ? 'none' : 'block';
+  document.getElementById('i_numero_label').textContent = 'Nº de patrimônio (opcional)';
+  document.getElementById('i_serial_wrap').style.display = isEpi ? 'none' : 'block';
+  document.getElementById('i_serial_label').textContent = 'Número de série (opcional)';
   document.getElementById('i_iccid_wrap').style.display = isInfo ? 'block' : 'none';
   document.getElementById('i_ca_wrap').style.display = isEpi ? 'block' : 'none';
 }
@@ -1696,6 +1851,10 @@ function selectSearchItem(type, id){
   document.getElementById('i_ca_add').value = '';
   document.getElementById('i_sem_ca_add').checked = false;
   document.getElementById('i_ca_add').disabled = false;
+  document.getElementById('i_ca_add_validade').value = '';
+  document.getElementById('i_ca_add_situacao').value = '';
+  document.getElementById('i_ca_add_situacao_info').textContent = 'Consulta automática ao sair do campo, ou clique em "Consultar".';
+  document.getElementById('i_ca_add_situacao_info').style.color = 'var(--ink-faint)';
 
   if(type === 'stock'){
     state.selectedStockItemId = id;
@@ -1755,6 +1914,10 @@ function openItemForm(employeeId, itemId){
     document.getElementById('i_iccid').value = it?.iccid || '';
     document.getElementById('i_ca').value = it?.ca || '';
     document.getElementById('i_ca').disabled = false;
+    document.getElementById('i_ca_validade').value = it?.caValidade || '';
+    document.getElementById('i_ca_situacao').value = it?.caSituacao || '';
+    document.getElementById('i_ca_situacao_info').textContent = it?.caSituacao ? `${it.caSituacao}${it.caValidade ? ' — validade '+fmtDate(it.caValidade) : ''}` : 'Consulta automática ao sair do campo, ou clique em "Consultar".';
+    document.getElementById('i_ca_situacao_info').style.color = (it?.caSituacao||'').toUpperCase().includes('VENCIDO') ? 'var(--red)' : 'var(--ink-faint)';
     document.getElementById('i_sem_ca').checked = (it?.categoria==='EPI' && !it?.ca);
     document.getElementById('i_estado').value = it?.estado || 'Novo';
     document.getElementById('i_data').value = it?.dataEntrega || todayStr();
@@ -1777,18 +1940,17 @@ async function saveItemForm(evt){
     const data = {
       descricao: document.getElementById('i_descricao').value.trim(),
       categoria,
-      numero: (categoria==='Equipamentos' || categoria==='Ferramental' || categoria==='Informática') ? document.getElementById('i_numero').value.trim() : null,
-      serial: categoria==='Ferramental' ? document.getElementById('i_serial').value.trim() : null,
+      numero: categoria==='EPI' ? null : document.getElementById('i_numero').value.trim(),
+      serial: categoria==='EPI' ? null : document.getElementById('i_serial').value.trim(),
       iccid: categoria==='Informática' ? document.getElementById('i_iccid').value.trim() : null,
       ca: categoria==='EPI' ? (semCa ? null : document.getElementById('i_ca').value.trim()) : null,
+      caValidade: categoria==='EPI' ? (document.getElementById('i_ca_validade').value || null) : null,
+      caSituacao: categoria==='EPI' ? (document.getElementById('i_ca_situacao').value || null) : null,
       estado: document.getElementById('i_estado').value,
       dataEntrega: document.getElementById('i_data').value,
       obs: document.getElementById('i_obs').value.trim()
     };
     if(!data.descricao){ showToast('Preencha a descrição do item.'); return; }
-    if((categoria==='Equipamentos' || categoria==='Ferramental') && !data.numero){ showToast('Preencha o número de patrimônio.'); return; }
-    if(categoria==='Ferramental' && !data.serial){ showToast('Preencha o número de série.'); return; }
-    if(categoria==='Informática' && !data.numero && !data.iccid){ showToast('Preencha o número de patrimônio ou o ICCID.'); return; }
     if(categoria==='EPI' && !semCa && !data.ca){ showToast('Preencha o CA ou marque "Sem CA".'); return; }
 
     const it = state.items.find(i=>i.id===state.editingItemId);
@@ -1840,6 +2002,8 @@ async function saveItemForm(evt){
     numero: null,
     serial: null,
     ca,
+    caValidade: document.getElementById('i_ca_add_validade').value || null,
+    caSituacao: document.getElementById('i_ca_add_situacao').value || null,
     estado,
     obs,
     dataEntrega,
@@ -1901,26 +2065,16 @@ function renderPatrimonioInputs(){
   wrap.querySelectorAll('input[data-patrimonio]').forEach(inp => existingNumero.push(inp.value));
   wrap.querySelectorAll('input[data-serial]').forEach(inp => existingSerial.push(inp.value));
 
-  let html = '';
-  if(cat === 'Ferramental'){
-    html += `<label>Patrimônio e série (1 par por unidade) *</label><div style="display:flex;flex-direction:column;gap:8px;">`;
-    for(let i=0;i<qty;i++){
-      const valN = existingNumero[i] ? escapeHtml(existingNumero[i]) : '';
-      const valS = existingSerial[i] ? escapeHtml(existingSerial[i]) : '';
-      html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-        <input type="text" data-patrimonio placeholder="Patrimônio ${i+1}" value="${valN}">
-        <input type="text" data-serial placeholder="Série ${i+1}" value="${valS}">
-      </div>`;
-    }
-    html += `</div>`;
-  }else{
-    html += `<label>Números de patrimônio (1 por unidade) *</label><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;">`;
-    for(let i=0;i<qty;i++){
-      const valN = existingNumero[i] ? escapeHtml(existingNumero[i]) : '';
-      html += `<input type="text" data-patrimonio placeholder="Unidade ${i+1}" value="${valN}">`;
-    }
-    html += `</div>`;
+  let html = `<label>Patrimônio e série por unidade (opcional)</label><div style="display:flex;flex-direction:column;gap:8px;">`;
+  for(let i=0;i<qty;i++){
+    const valN = existingNumero[i] ? escapeHtml(existingNumero[i]) : '';
+    const valS = existingSerial[i] ? escapeHtml(existingSerial[i]) : '';
+    html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      <input type="text" data-patrimonio placeholder="Patrimônio ${i+1} (opcional)" value="${valN}">
+      <input type="text" data-serial placeholder="Série ${i+1} (opcional)" value="${valS}">
+    </div>`;
   }
+  html += `</div>`;
   wrap.innerHTML = html;
   document.getElementById('stockSubmitBtn').textContent = `Cadastrar ${qty} ${qty===1?'item':'itens'}`;
 }
@@ -1929,6 +2083,7 @@ function checkDuplicates(values, field){
   const existing = new Set(state.items.map(i=>normalize(i[field])).filter(Boolean));
   const seenNow = new Set();
   for(const v of values){
+    if(!v) continue;
     const norm = normalize(v);
     if(existing.has(norm) || seenNow.has(norm)){
       showToast(`O valor "${v}" já está em uso (${field==='serial'?'número de série':'patrimônio'}).`);
@@ -1981,32 +2136,18 @@ async function saveStockBatch(evt){
   const estado = document.getElementById('s_estado').value;
   const dataAquisicao = document.getElementById('s_data').value;
   const obs = document.getElementById('s_obs').value.trim();
-  let newItems = [];
 
-  if(categoria === 'Ferramental'){
-    const numeros = [...document.querySelectorAll('#patrimonioInputsWrap input[data-patrimonio]')].map(inp => inp.value.trim());
-    const seriais = [...document.querySelectorAll('#patrimonioInputsWrap input[data-serial]')].map(inp => inp.value.trim());
-    if(numeros.some(n=>!n) || seriais.some(s=>!s)){
-      showToast('Preencha o patrimônio e a série de todas as unidades.');
-      return;
-    }
-    if(checkDuplicates(numeros, 'numero') || checkDuplicates(seriais, 'serial')) return;
-    newItems = numeros.map((numero,i) => ({
-      id: uid(), descricao, categoria, estado, obs, numero, serial: seriais[i], ca: null,
-      dataAquisicao, employeeId: null, status: 'Em estoque'
-    }));
-  }else{
-    const numeros = [...document.querySelectorAll('#patrimonioInputsWrap input[data-patrimonio]')].map(inp => inp.value.trim());
-    if(numeros.some(n=>!n)){
-      showToast('Preencha o número de patrimônio de todas as unidades.');
-      return;
-    }
-    if(checkDuplicates(numeros, 'numero')) return;
-    newItems = numeros.map(numero => ({
-      id: uid(), descricao, categoria, estado, obs, numero, serial: null, ca: null,
-      dataAquisicao, employeeId: null, status: 'Em estoque'
-    }));
-  }
+  const numeros = [...document.querySelectorAll('#patrimonioInputsWrap input[data-patrimonio]')].map(inp => inp.value.trim());
+  const seriais = [...document.querySelectorAll('#patrimonioInputsWrap input[data-serial]')].map(inp => inp.value.trim());
+  if(checkDuplicates(numeros, 'numero') || checkDuplicates(seriais, 'serial')) return;
+
+  const newItems = numeros.map((numero,i) => ({
+    id: uid(), descricao, categoria, estado, obs,
+    numero: numero || null,
+    serial: seriais[i] || null,
+    ca: null,
+    dataAquisicao, employeeId: null, status: 'Em estoque'
+  }));
 
   state.items.push(...newItems);
   showToast(`${newItems.length} ${newItems.length===1?'item cadastrado':'itens cadastrados'} no estoque.`);
@@ -2185,6 +2326,10 @@ function openAssignModal(itemId){
   state.assigningEpiCatalogId = null;
   document.getElementById('modalAssignTitle').textContent = 'Atribuir item a um colaborador';
   document.getElementById('assign_ca_wrap').style.display = 'none';
+  const it = state.items.find(i=>i.id===itemId);
+  document.getElementById('assign_estado').value = it?.estado || 'Novo';
+  document.getElementById('assign_data').value = todayStr();
+  document.getElementById('assign_obs').value = it?.obs || '';
   const sel = document.getElementById('assign_employee');
   const list = state.employees.slice().sort((a,b)=>a.nome.localeCompare(b.nome));
   if(list.length===0){
@@ -2202,6 +2347,13 @@ function openAssignModalForEpi(epiCatalogId){
   document.getElementById('assign_ca').value = '';
   document.getElementById('assign_ca').disabled = false;
   document.getElementById('assign_sem_ca').checked = false;
+  document.getElementById('assign_ca_validade').value = '';
+  document.getElementById('assign_ca_situacao').value = '';
+  document.getElementById('assign_ca_situacao_info').textContent = 'Consulta automática ao sair do campo, ou clique em "Consultar".';
+  document.getElementById('assign_ca_situacao_info').style.color = 'var(--ink-faint)';
+  document.getElementById('assign_estado').value = 'Novo';
+  document.getElementById('assign_data').value = todayStr();
+  document.getElementById('assign_obs').value = '';
   const sel = document.getElementById('assign_employee');
   const list = state.employees.slice().sort((a,b)=>a.nome.localeCompare(b.nome));
   if(list.length===0){
@@ -2220,6 +2372,9 @@ async function confirmAssign(){
   const empId = document.getElementById('assign_employee').value;
   if(!empId){ showToast('Selecione um colaborador.'); return; }
   const emp = state.employees.find(e=>e.id===empId);
+  const estado = document.getElementById('assign_estado').value;
+  const dataEntrega = document.getElementById('assign_data').value || todayStr();
+  const obs = document.getElementById('assign_obs').value.trim();
 
   if(state.assigningEpiCatalogId){
     const entry = state.epiCatalog.find(e=>e.id===state.assigningEpiCatalogId);
@@ -2235,9 +2390,11 @@ async function confirmAssign(){
       numero: null,
       serial: null,
       ca,
-      estado: 'Novo',
-      obs: '',
-      dataEntrega: todayStr(),
+      caValidade: document.getElementById('assign_ca_validade').value || null,
+      caSituacao: document.getElementById('assign_ca_situacao').value || null,
+      estado,
+      obs,
+      dataEntrega,
       employeeId: empId,
       status: 'Em posse'
     };
@@ -2255,7 +2412,9 @@ async function confirmAssign(){
   if(!it) return;
   it.employeeId = empId;
   it.status = 'Em posse';
-  it.dataEntrega = todayStr();
+  it.dataEntrega = dataEntrega;
+  it.estado = estado;
+  it.obs = obs;
   closeModal('modalAssign');
   showToast(`Item atribuído a ${emp ? emp.nome : 'colaborador'}.`);
   renderStockTable();
@@ -2673,18 +2832,26 @@ function generateValePdf(){
   y += 10;
 
   doc.setDrawColor(180); doc.setLineWidth(0.2);
-  const boxH = 22;
+  doc.setFont('helvetica','normal'); doc.setFontSize(8);
+  const empregadoraText = 'RD TELECOM LTDA., inscrita no CNPJ nº 07.426.902/0001-33, com sede na Av. Santos, 398, Quadra 17, Lote 07, Jardim Novo Mundo, CEP 74715-450, Goiânia/GO.';
+  const colaboradorText = `${emp.nome}, CPF nº ${emp.cpf||'[não informado]'}, matrícula nº ${emp.matricula}, cargo ${emp.cargo||'—'}.`;
+  const textWidth = pageWidth-margin*2-38;
+  const empregadoraLines = doc.splitTextToSize(empregadoraText, textWidth);
+  const colaboradorLines = doc.splitTextToSize(colaboradorText, textWidth);
+  const empregadoraRowH = Math.max(11, empregadoraLines.length*3.6 + 5);
+  const colaboradorRowH = Math.max(11, colaboradorLines.length*3.6 + 5);
+  const boxH = empregadoraRowH + colaboradorRowH;
   doc.rect(margin, y, pageWidth-margin*2, boxH);
   doc.line(margin+34, y, margin+34, y+boxH);
-  doc.line(margin, y+boxH/2, pageWidth-margin, y+boxH/2);
+  doc.line(margin, y+empregadoraRowH, pageWidth-margin, y+empregadoraRowH);
   doc.setFont('helvetica','bold'); doc.setFontSize(8);
   doc.text('EMPREGADORA', margin+2, y+6);
   doc.setFont('helvetica','normal'); doc.setFontSize(8);
-  doc.text(doc.splitTextToSize('RD TELECOM LTDA., inscrita no CNPJ nº [inserir CNPJ], com sede em [endereço completo].', pageWidth-margin*2-38), margin+37, y+6);
+  doc.text(empregadoraLines, margin+37, y+6);
   doc.setFont('helvetica','bold');
-  doc.text('COLABORADOR(A)', margin+2, y+16);
+  doc.text('COLABORADOR(A)', margin+2, y+empregadoraRowH+6);
   doc.setFont('helvetica','normal');
-  doc.text(doc.splitTextToSize(`${emp.nome}, CPF nº ${emp.cpf||'[não informado]'}, matrícula nº ${emp.matricula}, cargo ${emp.cargo||'—'}.`, pageWidth-margin*2-38), margin+37, y+16);
+  doc.text(colaboradorLines, margin+37, y+empregadoraRowH+6);
   y += boxH + 8;
 
   paragraph('As partes acima identificadas formalizam o presente Termo, mediante as condições abaixo.');
