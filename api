@@ -15,20 +15,35 @@ function limparTextoHtml(html) {
     .trim();
 }
 
+function pareceBloqueioAntiRobo(texto) {
+  const marcas = ['cloudflare', 'checking your browser', 'just a moment', 'captcha', 'attention required', 'access denied', 'ray id'];
+  const textoMin = texto.toLowerCase();
+  return marcas.some(m => textoMin.includes(m));
+}
+
 async function consultarConsultaCA(numeroLimpo) {
   const resp = await fetch(`https://consultaca.com/${numeroLimpo}`, {
     signal: AbortSignal.timeout(9000),
-    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AlmoxarifadoGrupoJet/1.0)' }
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+      'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8'
+    }
   });
-  if (!resp.ok) return null;
 
   const html = await resp.text();
   const texto = limparTextoHtml(html);
 
+  if (!resp.ok) {
+    return { ok: false, status: resp.status, bloqueado: pareceBloqueioAntiRobo(texto), amostra: texto.slice(0, 300) };
+  }
+
   const situacaoMatch = texto.match(/Situa[çc][ãa]o:?\s*([A-ZÁÀÂÃÉÊÍÓÔÕÚÜÇ]{3,})/);
   const validadeMatch = texto.match(/Validade:?\s*(\d{2}\/\d{2}\/\d{4})/);
 
-  if (!situacaoMatch && !validadeMatch) return null;
+  if (!situacaoMatch && !validadeMatch) {
+    return { ok: false, status: resp.status, bloqueado: pareceBloqueioAntiRobo(texto), amostra: texto.slice(0, 300) };
+  }
 
   let nomeEquipamento = null;
   const tituloMatch = html.match(/<title>([\s\S]*?)<\/title>/i);
@@ -40,10 +55,13 @@ async function consultarConsultaCA(numeroLimpo) {
   }
 
   return {
-    DataValidade: validadeMatch ? validadeMatch[1] : null,
-    Situacao: situacaoMatch ? situacaoMatch[1].trim() : null,
-    NomeEquipamento: nomeEquipamento || null,
-    Fonte: 'consultaca.com'
+    ok: true,
+    dados: {
+      DataValidade: validadeMatch ? validadeMatch[1] : null,
+      Situacao: situacaoMatch ? situacaoMatch[1].trim() : null,
+      NomeEquipamento: nomeEquipamento || null,
+      Fonte: 'consultaca.com'
+    }
   };
 }
 
@@ -59,6 +77,7 @@ async function consultarApiComunidade(numeroLimpo) {
 
 export default async function handler(req, res) {
   const numero = req.query.numero;
+  const debug = req.query.debug === '1';
 
   if (!numero) {
     return res.status(400).json({ error: 'Parametro "numero" e obrigatorio.' });
@@ -69,14 +88,17 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Numero de CA invalido.' });
   }
 
+  let diagnosticoPrincipal = null;
+
   try {
     const resultado = await consultarConsultaCA(numeroLimpo);
-    if (resultado) {
+    diagnosticoPrincipal = resultado;
+    if (resultado.ok) {
       res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate');
-      return res.status(200).json(resultado);
+      return res.status(200).json(resultado.dados);
     }
   } catch (e) {
-    // segue para a tentativa 2
+    diagnosticoPrincipal = { ok: false, excecao: String(e && e.message ? e.message : e) };
   }
 
   try {
@@ -89,5 +111,7 @@ export default async function handler(req, res) {
     // nenhuma fonte funcionou
   }
 
-  return res.status(404).json({ error: `Nao foi possivel encontrar dados para o CA ${numeroLimpo} em nenhuma fonte disponivel.` });
+  const respostaErro = { error: `Nao foi possivel encontrar dados para o CA ${numeroLimpo} em nenhuma fonte disponivel.` };
+  if (debug) respostaErro.diagnostico = diagnosticoPrincipal;
+  return res.status(404).json(respostaErro);
 }
