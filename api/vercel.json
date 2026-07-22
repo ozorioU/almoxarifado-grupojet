@@ -1,7 +1,0 @@
-{
-  "functions": {
-    "api/consulta-ca.js": {
-      "maxDuration": 30
-    }
-  }
-}
