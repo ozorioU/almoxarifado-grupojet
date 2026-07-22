@@ -1283,7 +1283,7 @@ async function consultarValidadeCA(numeroCA){
   if(!numeroLimpo) return { erro: 'numero_invalido' };
   try{
     const controller = new AbortController();
-    const timeout = setTimeout(()=>controller.abort(), 10000);
+    const timeout = setTimeout(()=>controller.abort(), 55000);
     const resp = await fetch(`/api/consulta-ca?numero=${numeroLimpo}`, { signal: controller.signal });
     clearTimeout(timeout);
     const data = await resp.json().catch(()=>null);
@@ -1317,7 +1317,7 @@ async function autoConsultarCa(caInputId, validadeInputId, situacaoInfoId){
   const infoEl = document.getElementById(situacaoInfoId);
   const situacaoHiddenEl = document.getElementById(situacaoInfoId.replace('_info',''));
   if(!numero){ return; }
-  infoEl.textContent = 'Consultando validade...';
+  infoEl.textContent = 'Consultando validade... (pode levar até 30-45 segundos)';
   infoEl.style.color = 'var(--ink-faint)';
   const result = await consultarValidadeCA(numero);
   if(!result || result.erro || !result.validadeISO){
