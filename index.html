@@ -1278,15 +1278,17 @@ function parseBRDateToISO(str){
   return `${m[3]}-${m[2]}-${m[1]}`;
 }
 async function consultarValidadeCA(numeroCA){
-  if(!numeroCA) return null;
+  if(!numeroCA) return { erro: 'numero_vazio' };
+  const numeroLimpo = String(numeroCA).replace(/\D/g, '');
+  if(!numeroLimpo) return { erro: 'numero_invalido' };
   try{
     const controller = new AbortController();
     const timeout = setTimeout(()=>controller.abort(), 8000);
-    const resp = await fetch(`https://projeto-ca-api.rj.r.appspot.com/api/ca/${encodeURIComponent(numeroCA)}`, { signal: controller.signal });
+    const resp = await fetch(`https://projeto-ca-api.rj.r.appspot.com/api/ca/${numeroLimpo}`, { signal: controller.signal });
     clearTimeout(timeout);
-    if(!resp.ok) return null;
+    if(!resp.ok) return { erro: 'http_'+resp.status };
     const data = await resp.json();
-    if(!data || (!data.DataValidade && !data.Situacao)) return null;
+    if(!data || (!data.DataValidade && !data.Situacao)) return { erro: 'sem_dados' };
     return {
       validadeBR: data.DataValidade || null,
       validadeISO: parseBRDateToISO(data.DataValidade),
@@ -1294,7 +1296,7 @@ async function consultarValidadeCA(numeroCA){
       equipamento: data.NomeEquipamento || data.DescricaoEquipamento || null
     };
   }catch(e){
-    return null;
+    return { erro: 'excecao', detalhe: (e && e.message) ? e.message : String(e) };
   }
 }
 function diasParaVencer(isoDate){
@@ -1318,8 +1320,15 @@ async function autoConsultarCa(caInputId, validadeInputId, situacaoInfoId){
   infoEl.textContent = 'Consultando validade...';
   infoEl.style.color = 'var(--ink-faint)';
   const result = await consultarValidadeCA(numero);
-  if(!result || !result.validadeISO){
-    infoEl.textContent = 'Não encontrado automaticamente — preencha a validade manualmente, se souber.';
+  if(!result || result.erro || !result.validadeISO){
+    const motivos = {
+      numero_vazio: 'digite o número do CA primeiro.',
+      numero_invalido: 'o número informado não parece válido.',
+      sem_dados: 'a consulta respondeu, mas sem dados de validade para esse CA.',
+      excecao: `falha de conexão com o serviço de consulta (${result?.detalhe || 'motivo desconhecido'}) — provavelmente bloqueio de rede/CORS ou o serviço está fora do ar.`
+    };
+    const motivo = result?.erro?.startsWith('http_') ? `o serviço respondeu com erro ${result.erro.replace('http_','')} (CA pode não existir).` : (motivos[result?.erro] || 'motivo desconhecido.');
+    infoEl.textContent = `Não foi possível consultar automaticamente: ${motivo} Preencha a validade manualmente, se souber.`;
     infoEl.style.color = 'var(--ink-faint)';
     if(situacaoHiddenEl) situacaoHiddenEl.value = '';
     return;
