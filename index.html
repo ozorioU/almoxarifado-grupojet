@@ -1283,11 +1283,11 @@ async function consultarValidadeCA(numeroCA){
   if(!numeroLimpo) return { erro: 'numero_invalido' };
   try{
     const controller = new AbortController();
-    const timeout = setTimeout(()=>controller.abort(), 8000);
-    const resp = await fetch(`https://projeto-ca-api.rj.r.appspot.com/api/ca/${numeroLimpo}`, { signal: controller.signal });
+    const timeout = setTimeout(()=>controller.abort(), 10000);
+    const resp = await fetch(`/api/consulta-ca?numero=${numeroLimpo}`, { signal: controller.signal });
     clearTimeout(timeout);
-    if(!resp.ok) return { erro: 'http_'+resp.status };
-    const data = await resp.json();
+    const data = await resp.json().catch(()=>null);
+    if(!resp.ok) return { erro: 'http_'+resp.status, detalhe: data?.error || null };
     if(!data || (!data.DataValidade && !data.Situacao)) return { erro: 'sem_dados' };
     return {
       validadeBR: data.DataValidade || null,
@@ -1327,7 +1327,7 @@ async function autoConsultarCa(caInputId, validadeInputId, situacaoInfoId){
       sem_dados: 'a consulta respondeu, mas sem dados de validade para esse CA.',
       excecao: `falha de conexão com o serviço de consulta (${result?.detalhe || 'motivo desconhecido'}) — provavelmente bloqueio de rede/CORS ou o serviço está fora do ar.`
     };
-    const motivo = result?.erro?.startsWith('http_') ? `o serviço respondeu com erro ${result.erro.replace('http_','')} (CA pode não existir).` : (motivos[result?.erro] || 'motivo desconhecido.');
+    const motivo = result?.erro?.startsWith('http_') ? `o serviço respondeu com erro ${result.erro.replace('http_','')}${result.detalhe ? ' ('+result.detalhe+')' : ' (CA pode não existir)'}.` : (motivos[result?.erro] || 'motivo desconhecido.');
     infoEl.textContent = `Não foi possível consultar automaticamente: ${motivo} Preencha a validade manualmente, se souber.`;
     infoEl.style.color = 'var(--ink-faint)';
     if(situacaoHiddenEl) situacaoHiddenEl.value = '';
