@@ -16,13 +16,13 @@ function limparTextoHtml(html) {
 }
 
 function pareceBloqueioAntiRobo(texto) {
-  const marcas = ['cloudflare', 'checking your browser', 'just a moment', 'captcha', 'attention required', 'access denied', 'ray id'];
-  const textoMin = texto.toLowerCase();
-  return marcas.some(m => textoMin.includes(m));
+  var marcas = ['cloudflare', 'checking your browser', 'just a moment', 'captcha', 'attention required', 'access denied', 'ray id'];
+  var textoMin = texto.toLowerCase();
+  return marcas.some(function(m) { return textoMin.includes(m); });
 }
 
 async function consultarConsultaCA(numeroLimpo) {
-  const resp = await fetch(`https://consultaca.com/${numeroLimpo}`, {
+  const resp = await fetch('https://consultaca.com/' + numeroLimpo, {
     signal: AbortSignal.timeout(9000),
     headers: {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
@@ -50,7 +50,7 @@ async function consultarConsultaCA(numeroLimpo) {
   if (tituloMatch) {
     nomeEquipamento = tituloMatch[1]
       .replace(/&amp;/gi, '&')
-      .replace(new RegExp(`^CA\\s*${numeroLimpo}\\s*-\\s*`, 'i'), '')
+      .replace(new RegExp('^CA\\s*' + numeroLimpo + '\\s*-\\s*', 'i'), '')
       .trim();
   }
 
@@ -66,16 +66,17 @@ async function consultarConsultaCA(numeroLimpo) {
 }
 
 async function consultarApiComunidade(numeroLimpo) {
-  const resp = await fetch(`https://projeto-ca-api.rj.r.appspot.com/api/ca/${numeroLimpo}`, {
+  const resp = await fetch('https://projeto-ca-api.rj.r.appspot.com/api/ca/' + numeroLimpo, {
     signal: AbortSignal.timeout(9000)
   });
   if (!resp.ok) return null;
   const data = await resp.json();
   if (!data || (!data.DataValidade && !data.Situacao)) return null;
-  return { ...data, Fonte: 'appspot-fallback' };
+  data.Fonte = 'appspot-fallback';
+  return data;
 }
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   const numero = req.query.numero;
   const debug = req.query.debug === '1';
 
@@ -111,7 +112,7 @@ export default async function handler(req, res) {
     // nenhuma fonte funcionou
   }
 
-  const respostaErro = { error: `Nao foi possivel encontrar dados para o CA ${numeroLimpo} em nenhuma fonte disponivel.` };
+  const respostaErro = { error: 'Nao foi possivel encontrar dados para o CA ' + numeroLimpo + ' em nenhuma fonte disponivel.' };
   if (debug) respostaErro.diagnostico = diagnosticoPrincipal;
   return res.status(404).json(respostaErro);
-}
+};
