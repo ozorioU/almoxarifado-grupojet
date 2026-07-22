@@ -42,7 +42,7 @@ async function viaScraperApiConsultaCA(numeroLimpo, timeoutMs) {
   let nomeEquipamento = null;
   const tituloMatch = html.match(/<title>([\s\S]*?)<\/title>/i);
   if (tituloMatch) {
-    nomeEquipamento = tituloMatch[1].replace(/&amp;/gi, '&').replace(new RegExp('^CA\\s*' + numeroLimpo + '\\s*-\\s*', 'i'), '').trim();
+    nomeEquipamento = tituloMatch[1].trim().replace(/&amp;/gi, '&').replace(new RegExp('^CA\\s*' + numeroLimpo + '\\s*-\\s*', 'i'), '').trim();
   }
   dados.NomeEquipamento = nomeEquipamento;
   dados.Fonte = 'consultaca.com (via ScraperAPI)';
