@@ -50,7 +50,7 @@ async function viaScraperApiConsultaCA(numeroLimpo, timeoutMs) {
 }
 
 async function consultarApiComunidade(numeroLimpo) {
-  const resp = await fetch('https://projeto-ca-api.rj.r.appspot.com/api/ca/' + numeroLimpo, { signal: AbortSignal.timeout(6000) });
+  const resp = await fetch('https://projeto-ca-api.rj.r.appspot.com/api/ca/' + numeroLimpo, { signal: AbortSignal.timeout(4000) });
   if (!resp.ok) return null;
   const data = await resp.json();
   if (!data || (!data.DataValidade && !data.Situacao)) return null;
@@ -59,7 +59,7 @@ async function consultarApiComunidade(numeroLimpo) {
 }
 
 async function tentativaDiretaConsultaCA(numeroLimpo) {
-  const resp = await fetch('https://consultaca.com/' + numeroLimpo, { signal: AbortSignal.timeout(6000) });
+  const resp = await fetch('https://consultaca.com/' + numeroLimpo, { signal: AbortSignal.timeout(4000) });
   const html = await resp.text();
   const texto = limparTextoHtml(html);
   if (!resp.ok) return { ok: false, status: resp.status };
@@ -81,7 +81,7 @@ module.exports = async function handler(req, res) {
 
   if (process.env.SCRAPER_API_KEY) {
     try {
-      const r1 = await viaScraperApiConsultaCA(numeroLimpo, 45000);
+      const r1 = await viaScraperApiConsultaCA(numeroLimpo, 50000);
       diagnosticos.consultaCaScraperApi = r1;
       if (r1.ok) {
         res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate');
