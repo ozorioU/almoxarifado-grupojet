@@ -1345,7 +1345,7 @@ function formatItemIdentifier(it){
     const codigoPart = it.codigo ? `Código ${it.codigo} · ` : '';
     return `${codigoPart}${it.ca ? 'CA '+it.ca : 'Sem CA'}`;
   }
-  if(cat === normalize('Informática')){
+  if(cat === normalize('Informática') && it.codigo === 'CHIP'){
     const parts = [];
     if(it.iccid) parts.push(`ICCID ${it.iccid}`);
     if(it.numero) parts.push(`Nº ${it.numero}`);
@@ -2202,7 +2202,7 @@ async function saveChip(evt){
     iccid,
     serial: null,
     ca: null,
-    codigo: null,
+    codigo: 'CHIP',
     estado: 'Novo',
     obs: (operadora ? `Operadora: ${operadora}` : '') + (obsText ? (operadora ? ' | ' : '') + obsText : ''),
     dataAquisicao: dataEntrada,
