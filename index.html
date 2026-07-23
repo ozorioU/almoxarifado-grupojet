@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <style>
   :root{
@@ -541,7 +542,7 @@
                   <label>Categoria *</label>
                   <select id="s_categoria_tipo" onchange="updateStockCategoryFields()">
                     <option value="Equipamentos">Equipamentos</option>
-                    <option value="EPI">EPI</option>
+                    <option value="EPI">EPI/EPC</option>
                     <option value="Ferramental">Ferramental</option>
                     <option value="Informática">Informática</option>
                   </select>
@@ -592,6 +593,26 @@
           </div>
         </div>
 
+        <div class="card">
+          <div class="card-head">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="m9 15 3-3 3 3"/></svg>
+            <h3>Cadastro em massa (planilha)</h3>
+          </div>
+          <div class="card-body" style="padding-top:16px;">
+            <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:14px;">
+              Sobe uma planilha (.xlsx) com as colunas <strong>Código</strong>, <strong>Categoria</strong> (escreva "Ferramenta" ou "EPI/EPC") e <strong>Descrição</strong>. Cada linha vira um item no catálogo correspondente — códigos já existentes são ignorados automaticamente.
+            </p>
+            <div class="form-field full" style="margin-bottom:0;">
+              <label>Arquivo da planilha</label>
+              <input type="file" id="bulk_import_file" accept=".xlsx,.xls">
+            </div>
+            <div class="modal-actions" style="justify-content:flex-start;margin-top:14px;">
+              <button type="button" class="btn btn-primary" onclick="importarPlanilhaMassa()">📥 Importar planilha</button>
+            </div>
+            <div id="bulkImportResult" style="margin-top:14px;font-size:13px;"></div>
+          </div>
+        </div>
+
         <div class="section-title">
           <h3>Itens em estoque</h3>
           <span class="count" id="stockCount"></span>
@@ -601,11 +622,19 @@
         </div>
 
         <div class="section-title">
-          <h3>Catálogo de EPI</h3>
+          <h3>Catálogo de EPI/EPC</h3>
           <span class="count" id="epiCatalogCount"></span>
         </div>
         <div class="card" style="padding:0;overflow-x:auto;">
           <div id="epiCatalogTableWrap"></div>
+        </div>
+
+        <div class="section-title">
+          <h3>Catálogo de Ferramental</h3>
+          <span class="count" id="ferramentalCatalogCount"></span>
+        </div>
+        <div class="card" style="padding:0;overflow-x:auto;">
+          <div id="ferramentalCatalogTableWrap"></div>
         </div>
       </div>
 
@@ -883,7 +912,7 @@
             <label>Categoria *</label>
             <select id="i_categoria_tipo" onchange="updateItemCategoryFields()">
               <option value="Equipamentos">Equipamentos</option>
-              <option value="EPI">EPI</option>
+              <option value="EPI">EPI/EPC</option>
               <option value="Ferramental">Ferramental</option>
               <option value="Informática">Informática</option>
             </select>
@@ -1066,7 +1095,7 @@
 <!-- MODAL: edit EPI catalog entry -->
 <div class="modal-overlay" id="modalEpiEdit">
   <div class="modal" style="max-width:420px;">
-    <h3>Editar EPI do catálogo</h3>
+    <h3>Editar EPI/EPC do catálogo</h3>
     <div class="form-grid">
       <div class="form-field full">
         <label>Descrição *</label>
@@ -1197,7 +1226,7 @@ async function loadAll(){
     const { data, error } = await sb.from('epi_catalog').select('*').order('descricao');
     if(error) throw error;
     state.epiCatalog = data || [];
-  }catch(e){ state.epiCatalog = state.epiCatalog || []; showToast('Erro ao carregar catálogo de EPI: ' + (e.message||e)); }
+  }catch(e){ state.epiCatalog = state.epiCatalog || []; showToast('Erro ao carregar catálogo de EPI/EPC: ' + (e.message||e)); }
   state.loaded = true;
 }
 function checkStorageHealth(){
@@ -1239,11 +1268,16 @@ async function dbDeleteItem(id){
 }
 async function dbInsertEpiCatalog(entry){
   const { error } = await sb.from('epi_catalog').insert(entry);
-  if(error) showToast('Erro ao salvar no catálogo de EPI: ' + error.message);
+  if(error) showToast('Erro ao salvar no catálogo de EPI/EPC: ' + error.message);
+}
+async function dbInsertEpiCatalogBatch(entries){
+  if(entries.length===0) return;
+  const { error } = await sb.from('epi_catalog').insert(entries);
+  if(error) showToast('Erro ao salvar itens importados: ' + error.message);
 }
 async function dbDeleteEpiCatalog(id){
   const { error } = await sb.from('epi_catalog').delete().eq('id', id);
-  if(error) showToast('Erro ao excluir do catálogo de EPI: ' + error.message);
+  if(error) showToast('Erro ao excluir do catálogo de EPI/EPC: ' + error.message);
 }
 
 // ---------- helpers ----------
@@ -1351,6 +1385,9 @@ function formatItemIdentifier(it){
     if(it.numero) parts.push(`Nº ${it.numero}`);
     return parts.length ? parts.join(' · ') : '—';
   }
+  if(cat === normalize('Ferramental') && it.codigo && !it.numero && !it.serial){
+    return `Código ${it.codigo}`;
+  }
   const parts = [];
   if(it.numero) parts.push(`Patrimônio ${it.numero}`);
   if(it.serial) parts.push(`Série ${it.serial}`);
@@ -1365,7 +1402,7 @@ function categoryBadgeClass(cat){
 }
 function categoryDisplayLabel(cat){
   const c = normalize(cat);
-  if(c===normalize('EPI')) return 'EPI';
+  if(c===normalize('EPI')) return 'EPI/EPC';
   if(c===normalize('Ferramental')) return 'Ferramental';
   if(c===normalize('Informática')) return 'Informática';
   if(c===normalize('Equipamentos')) return 'Equipamentos';
@@ -1397,7 +1434,7 @@ async function switchView(name){
   await loadAll();
   if(name==='home') renderHome();
   if(name==='employees') renderEmployeesList();
-  if(name==='stock'){ updateStockCategoryFields(); renderStockTable(); renderEpiCatalogTable(); }
+  if(name==='stock'){ updateStockCategoryFields(); renderStockTable(); renderEpiCatalogTable(); renderFerramentalCatalogTable(); }
   if(name==='items') renderItemsSearch();
   if(name==='chip') renderChipTable();
   if(name==='vale'){ if(state.valeEmployeeId) renderValeItemsChecklist(); }
@@ -1638,7 +1675,7 @@ function openEpiHistory(employeeId){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.getElementById('view-epi-history').classList.add('active');
   document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
-  document.getElementById('topbarTitle').textContent = 'Histórico de EPI';
+  document.getElementById('topbarTitle').textContent = 'Histórico de EPI/EPC';
   window.scrollTo(0,0);
   renderEpiHistory(employeeId);
 }
@@ -1727,15 +1764,16 @@ function renderFicha(id){
   }else if(mode==='separado'){
     const cats = ['Equipamentos','EPI','Ferramental','Informática'];
     ticketsHtml = cats.map(cat=>{
-      const list = itens.filter(i=>(i.categoria||'Equipamentos')===cat);
+      const list = itens.filter(i=>normalize(i.categoria||'Equipamentos')===normalize(cat));
+      const label = categoryDisplayLabel(cat);
       return `
         <div style="margin-bottom:22px;">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-            <span class="badge ${categoryBadgeClass(cat)}">${cat}</span>
+            <span class="badge ${categoryBadgeClass(cat)}">${label}</span>
             <span class="count">${list.length} item(ns)</span>
           </div>
           ${list.length===0
-            ? `<div class="empty-state" style="padding:20px;"><p style="margin:0;">Nenhum item de ${cat} para este colaborador.</p></div>`
+            ? `<div class="empty-state" style="padding:20px;"><p style="margin:0;">Nenhum item de ${label} para este colaborador.</p></div>`
             : list.map(it=>renderTicket(it, emp)).join('')}
         </div>`;
     }).join('');
@@ -1769,8 +1807,8 @@ function renderFicha(id){
       <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap;">
         <button class="btn btn-primary" onclick="openItemForm('${emp.id}')">+ Adicionar item</button>
         <button class="btn btn-outline" onclick="printFicha('${emp.id}')">🖨 Baixar PDF da ficha</button>
-        <button class="btn btn-outline" onclick="printEpiForm('${emp.id}')">📋 Ficha de EPI (PDF)</button>
-        <button class="btn btn-outline" onclick="openEpiHistory('${emp.id}')">🦺 Histórico de EPI</button>
+        <button class="btn btn-outline" onclick="printEpiForm('${emp.id}')">📋 Ficha de EPI/EPC (PDF)</button>
+        <button class="btn btn-outline" onclick="openEpiHistory('${emp.id}')">🦺 Histórico de EPI/EPC</button>
         <button class="btn btn-outline" onclick="openEmployeeForm('${emp.id}')">Editar dados</button>
       </div>
 
@@ -1830,7 +1868,7 @@ function filterItemSearchResults(){
   ).slice(0,6);
 
   if(stockMatches.length===0 && epiMatches.length===0){
-    resultsEl.innerHTML = `<div style="padding:10px 12px;font-size:12.5px;color:var(--ink-faint);">Nenhum item encontrado no estoque ou no catálogo de EPI. Cadastre em "Cadastrar itens".</div>`;
+    resultsEl.innerHTML = `<div style="padding:10px 12px;font-size:12.5px;color:var(--ink-faint);">Nenhum item encontrado no estoque ou no catálogo de EPI/EPC ou Ferramental. Cadastre em "Cadastrar itens".</div>`;
     resultsEl.style.display = 'block';
     return;
   }
@@ -1843,7 +1881,7 @@ function filterItemSearchResults(){
   });
   epiMatches.forEach(e=>{
     html += `<div style="padding:9px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--border);" onclick="selectSearchItem('epi','${e.id}')" onmouseover="this.style.background='#FAFAFA'" onmouseout="this.style.background='#fff'">
-      <span class="badge badge-cat-epi" style="margin-right:6px;">EPI</span>
+      <span class="badge badge-cat-epi" style="margin-right:6px;">EPI/EPC</span>
       <span class="code" style="font-weight:700;">${escapeHtml(e.codigo)}</span> — ${escapeHtml(e.descricao)}
     </div>`;
   });
@@ -2044,29 +2082,31 @@ async function deleteItem(itemId){
   dbDeleteItem(itemId);
 }
 
-// ---------- STOCK (CADASTRAR ITENS) ----------
 function updateStockCategoryFields(){
   const cat = document.getElementById('s_categoria_tipo').value;
-  const isEpi = cat === 'EPI';
+  const isCatalog = cat === 'EPI' || cat === 'Ferramental';
 
-  document.getElementById('s_epi_hint').style.display = isEpi ? 'block' : 'none';
-  document.getElementById('s_codigo_wrap').style.display = isEpi ? 'block' : 'none';
-  document.getElementById('s_quantidade_wrap').style.display = isEpi ? 'none' : 'block';
-  document.getElementById('s_estado_wrap').style.display = isEpi ? 'none' : 'block';
-  document.getElementById('s_data_wrap').style.display = isEpi ? 'none' : 'block';
-  document.getElementById('s_obs_wrap').style.display = isEpi ? 'none' : 'block';
-  document.getElementById('patrimonioInputsWrap').style.display = isEpi ? 'none' : 'block';
+  document.getElementById('s_epi_hint').style.display = isCatalog ? 'block' : 'none';
+  document.getElementById('s_epi_hint').innerHTML = cat === 'EPI'
+    ? 'Este EPI/EPC será cadastrado no catálogo e poderá ser entregue a qualquer colaborador, quantas vezes for necessário — não há controle de quantidade nem de patrimônio individual. O CA é informado depois, no momento da entrega para cada colaborador.'
+    : 'Este Ferramental será cadastrado no catálogo e poderá ser entregue a qualquer colaborador, quantas vezes for necessário — não há controle de quantidade nem de patrimônio individual, e não é pedido CA.';
+  document.getElementById('s_codigo_wrap').style.display = isCatalog ? 'block' : 'none';
+  document.getElementById('s_quantidade_wrap').style.display = isCatalog ? 'none' : 'block';
+  document.getElementById('s_estado_wrap').style.display = isCatalog ? 'none' : 'block';
+  document.getElementById('s_data_wrap').style.display = isCatalog ? 'none' : 'block';
+  document.getElementById('s_obs_wrap').style.display = isCatalog ? 'none' : 'block';
+  document.getElementById('patrimonioInputsWrap').style.display = isCatalog ? 'none' : 'block';
 
-  if(isEpi){
+  if(isCatalog){
     document.getElementById('patrimonioInputsWrap').innerHTML = '';
-    document.getElementById('stockSubmitBtn').textContent = 'Cadastrar no catálogo de EPI';
+    document.getElementById('stockSubmitBtn').textContent = cat === 'EPI' ? 'Cadastrar no catálogo de EPI/EPC' : 'Cadastrar no catálogo de Ferramental';
     return;
   }
   renderPatrimonioInputs();
 }
 function renderPatrimonioInputs(){
   const cat = document.getElementById('s_categoria_tipo').value;
-  if(cat === 'EPI') return;
+  if(cat === 'EPI' || cat === 'Ferramental') return;
   const wrap = document.getElementById('patrimonioInputsWrap');
   let qty = parseInt(document.getElementById('s_quantidade').value, 10);
   if(!qty || qty < 1) qty = 1;
@@ -2125,22 +2165,24 @@ async function saveStockBatch(evt){
     return;
   }
 
-  if(categoria === 'EPI'){
+  if(categoria === 'EPI' || categoria === 'Ferramental'){
     const codigo = document.getElementById('s_codigo').value.trim();
     if(!codigo){
       showToast('Preencha o código do material.');
       return;
     }
-    const existingCodes = new Set(state.epiCatalog.map(e=>normalize(e.codigo)));
+    const existingCodes = new Set(state.epiCatalog.filter(e=>normalize(e.categoria)===normalize(categoria)).map(e=>normalize(e.codigo)));
     if(existingCodes.has(normalize(codigo))){
-      showToast(`Já existe um EPI no catálogo com o código "${codigo}".`);
+      showToast(`Já existe um item nesse catálogo com o código "${codigo}".`);
       return;
     }
-    const entry = { id: uid(), codigo, descricao };
+    const entry = { id: uid(), codigo, descricao, categoria };
     state.epiCatalog.push(entry);
-    showToast('EPI cadastrado no catálogo.');
+    showToast(categoria === 'EPI' ? 'EPI/EPC cadastrado no catálogo.' : 'Ferramental cadastrado no catálogo.');
     resetStockForm();
     renderEpiCatalogTable();
+    renderFerramentalCatalogTable();
+    renderItemsSearch();
     dbInsertEpiCatalog(entry);
     return;
   }
@@ -2169,6 +2211,86 @@ async function saveStockBatch(evt){
   renderHome();
   renderItemsSearch();
   dbInsertItems(newItems);
+}
+
+function normalizarCategoriaPlanilha(valor){
+  const v = normalize(valor);
+  if(v === normalize('Ferramenta') || v === normalize('Ferramental')) return 'Ferramental';
+  if(v === normalize('EPI/EPC') || v === normalize('EPI') || v === normalize('EPC')) return 'EPI';
+  return null;
+}
+async function importarPlanilhaMassa(){
+  const fileInput = document.getElementById('bulk_import_file');
+  const resultEl = document.getElementById('bulkImportResult');
+  const file = fileInput.files[0];
+  if(!file){
+    showToast('Escolha um arquivo de planilha primeiro.');
+    return;
+  }
+  if(typeof XLSX === 'undefined'){
+    showToast('Não foi possível carregar o leitor de planilhas (verifique sua conexão e tente novamente).');
+    return;
+  }
+
+  resultEl.textContent = 'Lendo planilha...';
+
+  try{
+    const buffer = await file.arrayBuffer();
+    const wb = XLSX.read(buffer, { type: 'array' });
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+
+    const existingByCategoria = {
+      Ferramental: new Set(state.epiCatalog.filter(e=>normalize(e.categoria)===normalize('Ferramental')).map(e=>normalize(e.codigo))),
+      EPI: new Set(state.epiCatalog.filter(e=>normalize(e.categoria)===normalize('EPI')).map(e=>normalize(e.codigo)))
+    };
+
+    const novos = [];
+    let ignoradosDuplicados = 0;
+    let ignoradosCategoria = 0;
+    let ignoradosVazios = 0;
+
+    rows.forEach((row, idx) => {
+      const codigoRaw = (row[0] ?? '').toString().trim();
+      const categoriaRaw = (row[1] ?? '').toString().trim();
+      const descricaoRaw = (row[2] ?? '').toString().trim();
+
+      if(idx === 0 && normalize(codigoRaw) === normalize('CODIGO')) return; // linha de cabecalho
+      if(!codigoRaw || !descricaoRaw){ if(codigoRaw || descricaoRaw) ignoradosVazios++; return; }
+
+      const categoria = normalizarCategoriaPlanilha(categoriaRaw);
+      if(!categoria){ ignoradosCategoria++; return; }
+
+      const codigoNorm = normalize(codigoRaw);
+      if(existingByCategoria[categoria].has(codigoNorm)){ ignoradosDuplicados++; return; }
+      if(novos.some(n => n.categoria===categoria && normalize(n.codigo)===codigoNorm)){ ignoradosDuplicados++; return; }
+
+      novos.push({ id: uid(), codigo: codigoRaw, descricao: descricaoRaw, categoria });
+    });
+
+    if(novos.length > 0){
+      state.epiCatalog.push(...novos);
+      renderEpiCatalogTable();
+      renderFerramentalCatalogTable();
+      renderItemsSearch();
+      await dbInsertEpiCatalogBatch(novos);
+    }
+
+    const qtdFerramental = novos.filter(n=>n.categoria==='Ferramental').length;
+    const qtdEpi = novos.filter(n=>n.categoria==='EPI').length;
+
+    resultEl.innerHTML = `
+      <div style="padding:12px 14px;background:var(--blue-soft);border-radius:8px;">
+        ✅ <strong>${novos.length}</strong> item(ns) importado(s) — ${qtdFerramental} Ferramental, ${qtdEpi} EPI/EPC.<br>
+        ${ignoradosDuplicados ? `⚠️ ${ignoradosDuplicados} ignorado(s) por já existir no catálogo (código duplicado).<br>` : ''}
+        ${ignoradosCategoria ? `⚠️ ${ignoradosCategoria} linha(s) ignorada(s) por categoria não reconhecida (esperado "Ferramenta" ou "EPI/EPC").<br>` : ''}
+        ${ignoradosVazios ? `⚠️ ${ignoradosVazios} linha(s) ignorada(s) por faltar código ou descrição.` : ''}
+      </div>`;
+    showToast(`Importação concluída: ${novos.length} item(ns) cadastrado(s).`);
+    fileInput.value = '';
+  }catch(e){
+    resultEl.innerHTML = `<div style="padding:12px 14px;background:#FEE2E2;color:#991B1B;border-radius:8px;">Erro ao ler a planilha: ${escapeHtml(e.message||String(e))}</div>`;
+  }
 }
 
 // ---------- CONTROLE DE CHIP ----------
@@ -2270,12 +2392,12 @@ function renderChipTable(filter){
 
 function renderEpiCatalogTable(){
   const wrap = document.getElementById('epiCatalogTableWrap');
-  const list = state.epiCatalog.slice().sort((a,b)=>a.descricao.localeCompare(b.descricao));
+  const list = state.epiCatalog.filter(e=>normalize(e.categoria)===normalize('EPI')).slice().sort((a,b)=>a.descricao.localeCompare(b.descricao));
   document.getElementById('epiCatalogCount').textContent = `${list.length} modelo(s) cadastrado(s)`;
   if(list.length===0){
     wrap.innerHTML = `<div class="empty-state">
       <div class="icon">🦺</div>
-      <p>Nenhum EPI cadastrado no catálogo ainda. Cadastre acima escolhendo a categoria "EPI".</p>
+      <p>Nenhum EPI/EPC cadastrado no catálogo ainda. Cadastre acima escolhendo a categoria "EPI/EPC".</p>
     </div>`;
     return;
   }
@@ -2284,6 +2406,33 @@ function renderEpiCatalogTable(){
       <td class="code">${escapeHtml(e.codigo)}</td>
       <td>${escapeHtml(e.descricao)}</td>
       <td class="row-actions">
+        <button class="btn btn-outline btn-sm" onclick="openEpiCatalogEditModal('${e.id}')">Editar</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteEpiCatalogEntry('${e.id}')">Excluir</button>
+      </td>
+    </tr>`).join('');
+  wrap.innerHTML = `<table>
+    <thead><tr><th>Código</th><th>Descrição</th><th></th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+function renderFerramentalCatalogTable(){
+  const wrap = document.getElementById('ferramentalCatalogTableWrap');
+  if(!wrap) return;
+  const list = state.epiCatalog.filter(e=>normalize(e.categoria)===normalize('Ferramental')).slice().sort((a,b)=>a.descricao.localeCompare(b.descricao));
+  document.getElementById('ferramentalCatalogCount').textContent = `${list.length} modelo(s) cadastrado(s)`;
+  if(list.length===0){
+    wrap.innerHTML = `<div class="empty-state">
+      <div class="icon">🧰</div>
+      <p>Nenhum Ferramental cadastrado no catálogo ainda. Cadastre acima escolhendo a categoria "Ferramental".</p>
+    </div>`;
+    return;
+  }
+  const rows = list.map(e=>`
+    <tr>
+      <td class="code">${escapeHtml(e.codigo)}</td>
+      <td>${escapeHtml(e.descricao)}</td>
+      <td class="row-actions">
+        <button class="btn btn-outline btn-sm" onclick="openEpiCatalogEditModal('${e.id}')">Editar</button>
         <button class="btn btn-danger btn-sm" onclick="deleteEpiCatalogEntry('${e.id}')">Excluir</button>
       </td>
     </tr>`).join('');
@@ -2295,11 +2444,12 @@ function renderEpiCatalogTable(){
 async function deleteEpiCatalogEntry(id){
   const entry = state.epiCatalog.find(e=>e.id===id);
   if(!entry) return;
-  if(!(await customConfirm(`Excluir "${entry.descricao}" (código ${entry.codigo}) do catálogo de EPI? Isso não afeta entregas já registradas.`))) return;
+  if(!(await customConfirm(`Excluir "${entry.descricao}" (código ${entry.codigo}) do catálogo? Isso não afeta entregas já registradas.`))) return;
   state.epiCatalog = state.epiCatalog.filter(e=>e.id!==id);
   renderEpiCatalogTable();
+  renderFerramentalCatalogTable();
   renderItemsSearch();
-  showToast('Removido do catálogo de EPI.');
+  showToast('Removido do catálogo.');
   dbDeleteEpiCatalog(id);
 }
 
@@ -2351,11 +2501,13 @@ function openAssignModal(itemId){
   }
   document.getElementById('modalAssign').classList.add('active');
 }
-function openAssignModalForEpi(epiCatalogId){
+function openAssignModalForEpi(catalogId){
+  const entry = state.epiCatalog.find(e=>e.id===catalogId);
+  const isEpi = entry ? normalize(entry.categoria)===normalize('EPI') : true;
   state.assigningItemId = null;
-  state.assigningEpiCatalogId = epiCatalogId;
-  document.getElementById('modalAssignTitle').textContent = 'Atribuir EPI a um colaborador';
-  document.getElementById('assign_ca_wrap').style.display = 'block';
+  state.assigningEpiCatalogId = catalogId;
+  document.getElementById('modalAssignTitle').textContent = isEpi ? 'Atribuir EPI/EPC a um colaborador' : 'Atribuir Ferramental a um colaborador';
+  document.getElementById('assign_ca_wrap').style.display = isEpi ? 'block' : 'none';
   document.getElementById('assign_ca').value = '';
   document.getElementById('assign_ca').disabled = false;
   document.getElementById('assign_sem_ca').checked = false;
@@ -2391,19 +2543,25 @@ async function confirmAssign(){
   if(state.assigningEpiCatalogId){
     const entry = state.epiCatalog.find(e=>e.id===state.assigningEpiCatalogId);
     if(!entry) return;
-    const semCa = document.getElementById('assign_sem_ca').checked;
-    const ca = semCa ? null : document.getElementById('assign_ca').value.trim();
-    if(!semCa && !ca){ showToast('Preencha o CA ou marque "Entregar sem CA".'); return; }
+    const isEpi = normalize(entry.categoria) === normalize('EPI');
+    let ca = null, caValidade = null, caSituacao = null;
+    if(isEpi){
+      const semCa = document.getElementById('assign_sem_ca').checked;
+      ca = semCa ? null : document.getElementById('assign_ca').value.trim();
+      if(!semCa && !ca){ showToast('Preencha o CA ou marque "Entregar sem CA".'); return; }
+      caValidade = document.getElementById('assign_ca_validade').value || null;
+      caSituacao = document.getElementById('assign_ca_situacao').value || null;
+    }
     const data = {
       id: uid(),
       descricao: entry.descricao,
       codigo: entry.codigo,
-      categoria: 'EPI',
+      categoria: entry.categoria,
       numero: null,
       serial: null,
       ca,
-      caValidade: document.getElementById('assign_ca_validade').value || null,
-      caSituacao: document.getElementById('assign_ca_situacao').value || null,
+      caValidade,
+      caSituacao,
       estado,
       obs,
       dataEntrega,
@@ -2464,10 +2622,13 @@ function renderItemsSearch(filter){
   const ferramentalGroups = groupByDescricao(ferramentalItems);
   state.lastFerramentalGroups = ferramentalGroups;
 
-  let epiList = state.epiCatalog.slice().sort((a,b)=>a.descricao.localeCompare(b.descricao));
+  let epiList = state.epiCatalog.filter(e=>normalize(e.categoria)===normalize('EPI')).slice().sort((a,b)=>a.descricao.localeCompare(b.descricao));
   if(q){ epiList = epiList.filter(e => [e.descricao, e.codigo].some(f=>normalize(f).includes(q))); }
 
-  if(equipList.length===0 && ferramentalGroups.length===0 && epiList.length===0){
+  let ferramentalCatalogList = state.epiCatalog.filter(e=>normalize(e.categoria)===normalize('Ferramental')).slice().sort((a,b)=>a.descricao.localeCompare(b.descricao));
+  if(q){ ferramentalCatalogList = ferramentalCatalogList.filter(e => [e.descricao, e.codigo].some(f=>normalize(f).includes(q))); }
+
+  if(equipList.length===0 && ferramentalGroups.length===0 && epiList.length===0 && ferramentalCatalogList.length===0){
     wrap.innerHTML = `<div class="empty-state">
       <div class="icon">🔎</div>
       <p>${(state.items.length===0 && state.epiCatalog.length===0) ? 'Nenhum item cadastrado ainda. Adicione itens em "Cadastrar itens".' : 'Nenhum item encontrado para essa busca.'}</p>
@@ -2523,7 +2684,25 @@ function renderItemsSearch(filter){
     return `<tr>
       <td>${escapeHtml(e.descricao)}</td>
       <td class="code">Código ${escapeHtml(e.codigo)}</td>
-      <td><span class="badge ${categoryBadgeClass('EPI')}">EPI</span></td>
+      <td><span class="badge ${categoryBadgeClass('EPI')}">EPI/EPC</span></td>
+      <td><span class="badge badge-estoque">Disponível</span></td>
+      <td><em>${posse} colaborador(es)</em></td>
+      <td class="code">—</td>
+      <td class="row-actions">
+        <button class="btn btn-primary btn-sm" onclick="openAssignModalForEpi('${e.id}')">Atribuir</button>
+        <button class="btn btn-outline btn-sm" onclick="openGroupDetail('EPI','${e.id}')">Ver detalhes</button>
+        <button class="btn btn-outline btn-sm" onclick="openEpiCatalogEditModal('${e.id}')">Editar</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteEpiCatalogEntry('${e.id}')">Excluir</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  const ferramentalCatalogRows = ferramentalCatalogList.map(e=>{
+    const posse = state.items.filter(it=>normalize(it.categoria)===normalize('Ferramental') && it.codigo===e.codigo && it.status==='Em posse').length;
+    return `<tr>
+      <td>${escapeHtml(e.descricao)}</td>
+      <td class="code">Código ${escapeHtml(e.codigo)}</td>
+      <td><span class="badge ${categoryBadgeClass('Ferramental')}">Ferramental</span></td>
       <td><span class="badge badge-estoque">Disponível</span></td>
       <td><em>${posse} colaborador(es)</em></td>
       <td class="code">—</td>
@@ -2538,7 +2717,7 @@ function renderItemsSearch(filter){
 
   wrap.innerHTML = `<table>
     <thead><tr><th>Item</th><th>Identificação</th><th>Categoria</th><th>Status</th><th>Colaborador(es)</th><th>Entrega</th><th></th></tr></thead>
-    <tbody>${equipRows}${ferramentalRows}${epiRows}</tbody>
+    <tbody>${equipRows}${ferramentalRows}${ferramentalCatalogRows}${epiRows}</tbody>
   </table>`;
 }
 function quickAssignGroup(idx){
@@ -2582,10 +2761,11 @@ function openGroupDetail(kind, key){
   }else{
     const entry = state.epiCatalog.find(e=>e.id===key);
     if(!entry) return;
+    const isEpi = normalize(entry.categoria) === normalize('EPI');
     document.getElementById('groupDetailTitle').textContent = `${entry.descricao} (código ${entry.codigo})`;
-    const deliveries = state.items.filter(it=>it.categoria==='EPI' && it.codigo===entry.codigo).sort((a,b)=>(b.dataEntrega||'').localeCompare(a.dataEntrega||''));
+    const deliveries = state.items.filter(it=>normalize(it.categoria)===normalize(entry.categoria) && it.codigo===entry.codigo).sort((a,b)=>(b.dataEntrega||'').localeCompare(a.dataEntrega||''));
     if(deliveries.length===0){
-      body.innerHTML = `<div class="empty-state"><p>Nenhuma entrega registrada para este EPI ainda.</p></div>`;
+      body.innerHTML = `<div class="empty-state"><p>Nenhuma entrega registrada para este item ainda.</p></div>`;
     }else{
       const rows = deliveries.map(it=>{
         const emp = state.employees.find(e=>e.id===it.employeeId);
@@ -2594,16 +2774,18 @@ function openGroupDetail(kind, key){
         if(it.status==='Em posse') actions += `<button class="btn btn-outline btn-sm" onclick="returnItem('${it.id}');openGroupDetailRefresh()">Devolver</button>`;
         if(emp) actions += `<button class="btn btn-outline btn-sm" onclick="closeModal('modalGroupDetail');openFicha('${emp.id}')">Ver ficha</button>`;
         actions += `<button class="btn btn-danger btn-sm" onclick="deleteItem('${it.id}');openGroupDetailRefresh()">Excluir</button>`;
+        const caCell = isEpi ? `<td class="code">${it.ca ? ('CA '+escapeHtml(it.ca)) : 'Sem CA'}</td>` : '';
         return `<tr>
           <td>${emp ? `<a class="name-link" onclick="closeModal('modalGroupDetail');openFicha('${emp.id}')">${escapeHtml(emp.nome)}</a>` : '—'}</td>
-          <td class="code">${it.ca ? ('CA '+escapeHtml(it.ca)) : 'Sem CA'}</td>
+          ${caCell}
           <td><span class="badge ${badgeClass}">${it.status}</span></td>
           <td class="code">${fmtDate(it.dataEntrega)}</td>
           <td class="code">${it.status==='Devolvido' ? fmtDate(it.dataDevolucao) : '—'}</td>
           <td class="row-actions">${actions}</td>
         </tr>`;
       }).join('');
-      body.innerHTML = `<table><thead><tr><th>Colaborador</th><th>CA</th><th>Status</th><th>Entrega</th><th>Devolução</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+      const caHeader = isEpi ? '<th>CA</th>' : '';
+      body.innerHTML = `<table><thead><tr><th>Colaborador</th>${caHeader}<th>Status</th><th>Entrega</th><th>Devolução</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
     }
   }
   modal.classList.add('active');
@@ -2628,13 +2810,14 @@ async function saveEpiCatalogEdit(){
   if(!descricao || !codigo){ showToast('Preencha descrição e código.'); return; }
   const entry = state.epiCatalog.find(e=>e.id===state.editingEpiCatalogId);
   if(!entry) return;
-  const dup = state.epiCatalog.find(e=>e.id!==entry.id && normalize(e.codigo)===normalize(codigo));
-  if(dup){ showToast(`Já existe um EPI com o código "${codigo}".`); return; }
+  const dup = state.epiCatalog.find(e=>e.id!==entry.id && normalize(e.categoria)===normalize(entry.categoria) && normalize(e.codigo)===normalize(codigo));
+  if(dup){ showToast(`Já existe um item nesse catálogo com o código "${codigo}".`); return; }
   entry.descricao = descricao;
   entry.codigo = codigo;
   closeModal('modalEpiEdit');
-  showToast('EPI atualizado.');
+  showToast('Item atualizado.');
   renderEpiCatalogTable();
+  renderFerramentalCatalogTable();
   renderItemsSearch();
   const { error } = await sb.from('epi_catalog').update({ descricao, codigo }).eq('id', entry.id);
   if(error) showToast('Erro ao salvar: ' + error.message);
@@ -3104,7 +3287,7 @@ function printEpiForm(id){
   doc.setFont('helvetica','bold');
   doc.setFontSize(16);
   doc.setTextColor(20,20,20);
-  doc.text('FICHA PARA CONTROLE DE EPI', margin + logoW + 8, y-2);
+  doc.text('FICHA PARA CONTROLE DE EPI/EPC', margin + logoW + 8, y-2);
   y += 8;
 
   doc.setDrawColor(180,180,180);
@@ -3197,7 +3380,7 @@ function printEpiForm(id){
 
   const safeName = normalize(emp.nome).replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'') || 'colaborador';
   doc.save(`ficha_epi_${safeName}.pdf`);
-  showToast('Ficha de EPI gerada.');
+  showToast('Ficha de EPI/EPC gerada.');
 }
 
 
