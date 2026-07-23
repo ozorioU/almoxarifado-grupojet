@@ -501,6 +501,27 @@
           </div>
           <button class="btn btn-primary" onclick="openEmployeeForm()">+ Novo colaborador</button>
         </div>
+
+        <div class="card">
+          <div class="card-head">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="m9 15 3-3 3 3"/></svg>
+            <h3>Cadastro em massa (planilha)</h3>
+          </div>
+          <div class="card-body" style="padding-top:16px;">
+            <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:14px;">
+              Sobe uma planilha (.xlsx) no formato da folha "Jet corporativo": blocos separados por um cabeçalho de vínculo (linhas começando com "FUNCIONARIOS RRD...", "FUNCIONARIOS RD..." ou "CONTRATO PJ"), seguidos das colunas Nome, Cidade, CPF, RG, Data de início, Função e Aniversário. Cada bloco vira o vínculo (RRD Filial / RD / PJ) do colaborador. Linhas "TOTAL" e CPFs já cadastrados são ignorados automaticamente. A matrícula fica em branco para preencher depois.
+            </p>
+            <div class="form-field full" style="margin-bottom:0;">
+              <label>Arquivo da planilha</label>
+              <input type="file" id="bulk_import_employees_file" accept=".xlsx,.xls">
+            </div>
+            <div class="modal-actions" style="justify-content:flex-start;margin-top:14px;">
+              <button type="button" class="btn btn-primary" onclick="importarPlanilhaColaboradores()">📥 Importar planilha</button>
+            </div>
+            <div id="bulkImportEmployeesResult" style="margin-top:14px;font-size:13px;"></div>
+          </div>
+        </div>
+
         <div class="search-row">
           <input type="text" id="employeeSearchInput" placeholder="Buscar colaborador..." oninput="renderEmployeesList(this.value)">
         </div>
@@ -845,6 +866,15 @@
         <div class="form-field">
           <label>CPF</label>
           <input type="text" id="f_cpf" placeholder="000.000.000-00">
+        </div>
+        <div class="form-field">
+          <label>RG</label>
+          <input type="text" id="f_rg" placeholder="0000000 SSP-UF">
+        </div>
+        <div class="form-field">
+          <label>Cidade</label>
+          <input type="text" id="f_cidade" list="cidadesList">
+          <datalist id="cidadesList"></datalist>
         </div>
         <div class="form-field">
           <label>Cargo *</label>
@@ -1204,8 +1234,9 @@ function rowToItem(row){
 }
 function employeeToRow(e){
   return {
-    id: e.id, nome: e.nome, matricula: e.matricula, cpf: e.cpf || null, cargo: e.cargo,
+    id: e.id, nome: e.nome, matricula: e.matricula || null, cpf: e.cpf || null, cargo: e.cargo,
     setor: e.setor || null, filial: e.filial || null, admissao: e.admissao || null,
+    cidade: e.cidade || null, rg: e.rg || null,
     telefone: e.telefone || null, email: e.email || null, status: e.status || 'Ativo'
   };
 }
@@ -1245,6 +1276,11 @@ function showStorageWarning(reason){
 async function dbInsertEmployee(emp){
   const { error } = await sb.from('employees').insert(employeeToRow(emp));
   if(error) showToast('Erro ao salvar no banco: ' + error.message);
+}
+async function dbInsertEmployeesBatch(emps){
+  if(emps.length===0) return;
+  const { error } = await sb.from('employees').insert(emps.map(employeeToRow));
+  if(error) showToast('Erro ao salvar colaboradores importados: ' + error.message);
 }
 async function dbUpdateEmployee(emp){
   const { error } = await sb.from('employees').update(employeeToRow(emp)).eq('id', emp.id);
@@ -1551,7 +1587,7 @@ function renderEmployeesList(filter){
   const q = normalize(filter);
   let list = state.employees.slice().sort((a,b)=>a.nome.localeCompare(b.nome));
   if(q){
-    list = list.filter(e => [e.nome,e.matricula,e.cpf,e.cargo,e.setor,e.filial].some(f=>normalize(f).includes(q)));
+    list = list.filter(e => [e.nome,e.matricula,e.cpf,e.cargo,e.setor,e.filial,e.cidade,e.rg].some(f=>normalize(f).includes(q)));
   }
   if(list.length===0){
     wrap.innerHTML = `<div class="empty-state">
@@ -1591,9 +1627,11 @@ function refreshDatalists(){
   const cargos = [...new Set(state.employees.map(e=>e.cargo).filter(Boolean))];
   const setores = [...new Set(state.employees.map(e=>e.setor).filter(Boolean))];
   const filiais = [...new Set(state.employees.map(e=>e.filial).filter(Boolean))];
+  const cidades = [...new Set(state.employees.map(e=>e.cidade).filter(Boolean))];
   document.getElementById('cargosList').innerHTML = cargos.map(c=>`<option value="${escapeHtml(c)}">`).join('');
   document.getElementById('setoresList').innerHTML = setores.map(c=>`<option value="${escapeHtml(c)}">`).join('');
   document.getElementById('filiaisList').innerHTML = filiais.map(c=>`<option value="${escapeHtml(c)}">`).join('');
+  document.getElementById('cidadesList').innerHTML = cidades.map(c=>`<option value="${escapeHtml(c)}">`).join('');
 }
 function openEmployeeForm(id){
   refreshDatalists();
@@ -1604,6 +1642,8 @@ function openEmployeeForm(id){
   document.getElementById('f_nome').value = emp?.nome || '';
   document.getElementById('f_matricula').value = emp?.matricula || '';
   document.getElementById('f_cpf').value = emp?.cpf || '';
+  document.getElementById('f_rg').value = emp?.rg || '';
+  document.getElementById('f_cidade').value = emp?.cidade || '';
   document.getElementById('f_cargo').value = emp?.cargo || '';
   document.getElementById('f_setor').value = emp?.setor || '';
   document.getElementById('f_filial').value = emp?.filial || '';
@@ -1619,6 +1659,8 @@ async function saveEmployeeForm(evt){
     nome: document.getElementById('f_nome').value.trim(),
     matricula: document.getElementById('f_matricula').value.trim(),
     cpf: document.getElementById('f_cpf').value.trim(),
+    rg: document.getElementById('f_rg').value.trim(),
+    cidade: document.getElementById('f_cidade').value.trim(),
     cargo: document.getElementById('f_cargo').value.trim(),
     setor: document.getElementById('f_setor').value.trim(),
     filial: document.getElementById('f_filial').value.trim(),
@@ -1648,6 +1690,124 @@ async function saveEmployeeForm(evt){
     renderFicha(state.currentEmployeeId);
   }
   if(isNew) dbInsertEmployee(data); else dbUpdateEmployee(state.employees.find(e=>e.id===state.editingEmployeeId));
+}
+
+function parseDataPlanilha(val){
+  if(!val) return null;
+  if(val instanceof Date){
+    const y = val.getFullYear(), m = String(val.getMonth()+1).padStart(2,'0'), d = String(val.getDate()).padStart(2,'0');
+    if(y < 1900 || y > 2100) return null;
+    return `${y}-${m}-${d}`;
+  }
+  const s = String(val).trim();
+  let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(m){
+    const y = parseInt(m[1],10);
+    if(y >= 1900 && y <= 2100) return `${m[1]}-${m[2]}-${m[3]}`;
+    return null;
+  }
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+  return null;
+}
+function detectarVinculoPlanilha(valor){
+  const v = normalize(valor);
+  if(v.includes(normalize('FUNCIONARIOS RRD'))) return 'RRD Filial';
+  if(v.includes(normalize('FUNCIONARIOS RD'))) return 'RD';
+  if(v.includes(normalize('CONTRATO PJ'))) return 'PJ';
+  return null;
+}
+async function importarPlanilhaColaboradores(){
+  const fileInput = document.getElementById('bulk_import_employees_file');
+  const resultEl = document.getElementById('bulkImportEmployeesResult');
+  const file = fileInput.files[0];
+  if(!file){
+    showToast('Escolha um arquivo de planilha primeiro.');
+    return;
+  }
+  if(typeof XLSX === 'undefined'){
+    showToast('Não foi possível carregar o leitor de planilhas (verifique sua conexão e tente novamente).');
+    return;
+  }
+
+  resultEl.textContent = 'Lendo planilha...';
+
+  try{
+    const buffer = await file.arrayBuffer();
+    const wb = XLSX.read(buffer, { type: 'array', cellDates: true });
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: true });
+
+    const existingCpfs = new Set(state.employees.map(e=>normalize(e.cpf)).filter(Boolean));
+
+    const novos = [];
+    let vinculoAtual = null;
+    let ignoradosDuplicados = 0;
+    let ignoradosSemNome = 0;
+
+    rows.forEach(row => {
+      const col0 = (row[0] ?? '').toString().trim();
+      if(!col0){ return; }
+
+      const vinculoDetectado = detectarVinculoPlanilha(col0);
+      if(vinculoDetectado){ vinculoAtual = vinculoDetectado; return; }
+
+      if(normalize(col0) === normalize('TOTAL')) return;
+      if(!vinculoAtual) return;
+
+      const nome = col0;
+      const cidade = (row[1] ?? '').toString().trim();
+      const cpf = (row[2] ?? '').toString().trim();
+      const rg = (row[3] ?? '').toString().trim();
+      const admissao = parseDataPlanilha(row[4]);
+      const cargo = (row[5] ?? '').toString().trim();
+
+      if(!nome){ ignoradosSemNome++; return; }
+      const cpfNorm = normalize(cpf);
+      if(cpfNorm && existingCpfs.has(cpfNorm)){ ignoradosDuplicados++; return; }
+      if(cpfNorm && novos.some(n => normalize(n.cpf)===cpfNorm)){ ignoradosDuplicados++; return; }
+
+      novos.push({
+        id: uid(),
+        nome,
+        matricula: '',
+        cpf: cpf || null,
+        rg: rg || null,
+        cidade: cidade || null,
+        cargo: cargo || null,
+        setor: null,
+        filial: vinculoAtual,
+        admissao,
+        telefone: null,
+        email: null,
+        status: 'Ativo'
+      });
+      if(cpfNorm) existingCpfs.add(cpfNorm);
+    });
+
+    if(novos.length > 0){
+      state.employees.push(...novos);
+      renderEmployeesList();
+      renderHome();
+      refreshDatalists();
+      await dbInsertEmployeesBatch(novos);
+    }
+
+    const porVinculo = novos.reduce((acc,n)=>{ acc[n.filial] = (acc[n.filial]||0)+1; return acc; }, {});
+    const resumoVinculos = Object.entries(porVinculo).map(([v,c])=>`${c} ${v}`).join(', ');
+
+    resultEl.innerHTML = `
+      <div style="padding:12px 14px;background:var(--blue-soft);border-radius:8px;">
+        ✅ <strong>${novos.length}</strong> colaborador(es) importado(s)${resumoVinculos ? ' — '+resumoVinculos : ''}.<br>
+        A matrícula ficou em branco — edite cada colaborador para preenchê-la.<br>
+        ${ignoradosDuplicados ? `⚠️ ${ignoradosDuplicados} ignorado(s) por já existir um colaborador com o mesmo CPF.<br>` : ''}
+        ${ignoradosSemNome ? `⚠️ ${ignoradosSemNome} linha(s) ignorada(s) por falta de nome.` : ''}
+      </div>`;
+    showToast(`Importação concluída: ${novos.length} colaborador(es) cadastrado(s).`);
+    fileInput.value = '';
+  }catch(e){
+    resultEl.innerHTML = `<div style="padding:12px 14px;background:#FEE2E2;color:#991B1B;border-radius:8px;">Erro ao ler a planilha: ${escapeHtml(e.message||String(e))}</div>`;
+  }
 }
 async function deleteEmployee(id){
   const emp = state.employees.find(e=>e.id===id);
@@ -1797,6 +1957,8 @@ function renderFicha(id){
     <div class="ficha-body">
       <div class="info-grid">
         <div class="info-field"><label>CPF</label><div class="mono">${escapeHtml(emp.cpf||'—')}</div></div>
+        <div class="info-field"><label>RG</label><div class="mono">${escapeHtml(emp.rg||'—')}</div></div>
+        <div class="info-field"><label>Cidade</label><div>${escapeHtml(emp.cidade||'—')}</div></div>
         <div class="info-field"><label>Filial</label><div>${escapeHtml(emp.filial||'—')}</div></div>
         <div class="info-field"><label>Admissão</label><div class="mono">${fmtDate(emp.admissao)}</div></div>
         <div class="info-field"><label>Telefone</label><div class="mono">${escapeHtml(emp.telefone||'—')}</div></div>
