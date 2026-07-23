@@ -1382,7 +1382,7 @@ const PAGE_TITLES = { home:'Início', employees:'Colaboradores', ficha:'Ficha do
 
 // ---------- view switching ----------
 async function switchView(name){
-  if(name==='users' && (!state.currentUser || state.currentUser.role!=='admin')){
+  if(name==='users' && (!state.currentUser || (state.currentUser.role!=='admin' && state.currentUser.role!=='desenvolvedor'))){
     showToast('Apenas administradores podem acessar essa área.');
     name = 'home';
   }
@@ -3245,11 +3245,11 @@ function logout(){
 }
 
 function applyRoleUI(){
-  const isAdmin = state.currentUser && state.currentUser.role === 'admin';
+  const isAdmin = state.currentUser && (state.currentUser.role === 'admin' || state.currentUser.role === 'desenvolvedor');
   document.getElementById('navUsers').style.display = isAdmin ? 'flex' : 'none';
   document.getElementById('adminSectionLabel').style.display = isAdmin ? 'block' : 'none';
   document.getElementById('userNameLabel').textContent = state.currentUser.name;
-  document.getElementById('userRoleLabel').textContent = isAdmin ? 'Administrador' : 'Operador';
+  document.getElementById('userRoleLabel').textContent = state.currentUser.role === 'desenvolvedor' ? 'Desenvolvedor' : (isAdmin ? 'Administrador' : 'Operador');
   document.getElementById('userAvatar').textContent = (state.currentUser.name||'?').trim().charAt(0).toUpperCase();
 }
 
@@ -3264,6 +3264,7 @@ async function enterApp(){
 }
 
 // ---------- USERS (admin) ----------
+const DEV_PROTECTED_EMAIL = 'ozorio.neto@grupojet.com.br';
 async function renderUsersList(){
   const wrap = document.getElementById('usersTableWrap');
   const { data, error } = await sb.from('app_users_public').select('*').order('name');
@@ -3276,24 +3277,36 @@ async function renderUsersList(){
     wrap.innerHTML = `<div class="empty-state"><div class="icon">👤</div><p>Nenhum usuário cadastrado.</p></div>`;
     return;
   }
-  const rows = state.usersList.map(u => `
+  const rows = state.usersList.map(u => {
+    const isProtected = normalize(u.email) === normalize(DEV_PROTECTED_EMAIL);
+    const roleLabel = isProtected ? 'Desenvolvedor' : (u.role==='admin' ? 'Administrador' : 'Operador');
+    const roleBadgeClass = isProtected ? 'badge-cat-informatica' : (u.role==='admin' ? 'badge-posse' : 'badge-devolvido');
+    const actions = isProtected
+      ? `<span class="code" style="color:var(--ink-faint);">🔒 Protegido pelo sistema</span>`
+      : `<button class="btn btn-outline btn-sm" onclick="openUserForm('${u.id}')">Editar</button>
+         <button class="btn btn-outline btn-sm" onclick="toggleUserActive('${u.id}', ${u.active})">${u.active?'Desativar':'Ativar'}</button>
+         <button class="btn btn-danger btn-sm" onclick="deleteUserAccount('${u.id}')">Excluir</button>`;
+    return `
     <tr>
       <td>${escapeHtml(u.name)}${u.id===state.currentUser.id ? ' <span class="code">(você)</span>' : ''}</td>
       <td>${escapeHtml(u.email)}</td>
-      <td><span class="badge ${u.role==='admin'?'badge-posse':'badge-devolvido'}">${u.role==='admin'?'Administrador':'Operador'}</span></td>
+      <td><span class="badge ${roleBadgeClass}">${roleLabel}</span></td>
       <td><span class="badge ${u.active?'badge-ativo':'badge-inativo'}">${u.active?'Ativo':'Inativo'}</span></td>
-      <td class="row-actions">
-        <button class="btn btn-outline btn-sm" onclick="openUserForm('${u.id}')">Editar</button>
-        <button class="btn btn-outline btn-sm" onclick="toggleUserActive('${u.id}', ${u.active})">${u.active?'Desativar':'Ativar'}</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteUserAccount('${u.id}')">Excluir</button>
-      </td>
-    </tr>`).join('');
+      <td class="row-actions">${actions}</td>
+    </tr>`;}).join('');
   wrap.innerHTML = `<table>
     <thead><tr><th>Nome</th><th>E-mail</th><th>Nível</th><th>Status</th><th></th></tr></thead>
     <tbody>${rows}</tbody>
   </table>`;
 }
 function openUserForm(id){
+  if(id){
+    const target = (state.usersList||[]).find(x=>x.id===id);
+    if(target && normalize(target.email)===normalize(DEV_PROTECTED_EMAIL)){
+      showToast('Este usuário é protegido pelo sistema e não pode ser editado.');
+      return;
+    }
+  }
   state.editingUserId = id || null;
   const isEdit = !!id;
   const u = isEdit ? (state.usersList||[]).find(x=>x.id===id) : null;
@@ -3314,6 +3327,14 @@ async function saveUserForm(evt){
   const role = document.getElementById('u_role').value;
 
   if(!name || !email){ showToast('Preencha nome e e-mail.'); return; }
+  if(role === 'desenvolvedor' && normalize(email) !== normalize(DEV_PROTECTED_EMAIL)){
+    showToast('Este cargo é exclusivo e não pode ser atribuído a outro usuário.');
+    return;
+  }
+  if(!state.editingUserId && normalize(email) === normalize(DEV_PROTECTED_EMAIL)){
+    showToast('Este e-mail é reservado pelo sistema.');
+    return;
+  }
   if(!state.editingUserId && (!password || password.length<6)){
     showToast('Defina uma senha com pelo menos 6 caracteres.');
     return;
@@ -3324,6 +3345,11 @@ async function saveUserForm(evt){
   }
   try{
     if(state.editingUserId){
+      const target = (state.usersList||[]).find(x=>x.id===state.editingUserId);
+      if(target && normalize(target.email)===normalize(DEV_PROTECTED_EMAIL)){
+        showToast('Este usuário é protegido pelo sistema e não pode ser editado.');
+        return;
+      }
       const payload = { name, role };
       if(password){
         const { data:hash, error:hashErr } = await sb.rpc('hash_password', { p_password: password });
@@ -3347,6 +3373,11 @@ async function saveUserForm(evt){
   }
 }
 async function toggleUserActive(id, currentlyActive){
+  const target = (state.usersList||[]).find(x=>x.id===id);
+  if(target && normalize(target.email)===normalize(DEV_PROTECTED_EMAIL)){
+    showToast('Este usuário é protegido pelo sistema.');
+    return;
+  }
   const makeActive = !currentlyActive;
   if(!(await customConfirm(makeActive ? 'Reativar este usuário?' : 'Desativar este usuário? Ele não conseguirá mais entrar no sistema.'))) return;
   const { error } = await sb.from('app_users').update({ active: makeActive }).eq('id', id);
@@ -3357,6 +3388,10 @@ async function toggleUserActive(id, currentlyActive){
 async function deleteUserAccount(id){
   if(id === state.currentUser.id){ showToast('Você não pode excluir seu próprio usuário.'); return; }
   const u = (state.usersList||[]).find(x=>x.id===id);
+  if(u && normalize(u.email)===normalize(DEV_PROTECTED_EMAIL)){
+    showToast('Este usuário é protegido pelo sistema e não pode ser excluído.');
+    return;
+  }
   if(!(await customConfirm(`Excluir o usuário ${u ? u.name : ''}?`))) return;
   const { error } = await sb.from('app_users').delete().eq('id', id);
   if(error){ showToast('Erro: ' + error.message); return; }
