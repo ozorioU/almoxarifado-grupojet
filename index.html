@@ -3774,16 +3774,27 @@ function renderPedidoDetail(id){
               <input type="text" id="cot_prazo" placeholder="Ex.: 5 dias úteis">
             </div>
           </div>
+          <p style="font-size:12px;color:var(--ink-soft);margin-bottom:10px;">Informe o valor unitário <strong>sem imposto</strong> — o sistema calcula o valor com imposto (ICMS/IPI/PIS/COFINS) automaticamente, igual no mapa de cotação.</p>
+          <div style="overflow-x:auto;">
           <table style="width:100%;">
-            <thead><tr><th style="text-align:left;">Item</th><th>Qtd.</th><th>Valor unitário (R$)</th></tr></thead>
+            <thead><tr>
+              <th style="text-align:left;">Item</th><th>Qtd.</th>
+              <th>Vlr. Unit.<br>s/ imposto</th>
+              <th>ICMS %</th><th>IPI %</th><th>PIS %</th><th>COFINS %</th>
+            </tr></thead>
             <tbody>
               ${items.map(it=>`<tr>
                 <td>${escapeHtml(it.descricao)}</td>
                 <td class="code" style="text-align:center;">${it.quantidade}</td>
-                <td><input type="text" class="cot-item-valor" data-item-id="${it.id}" placeholder="0,00" style="max-width:140px;"></td>
+                <td><input type="text" class="cot-item-valor" data-item-id="${it.id}" placeholder="0,00" style="max-width:110px;"></td>
+                <td><input type="text" class="cot-item-icms" data-item-id="${it.id}" placeholder="12" value="12" style="max-width:60px;text-align:center;"></td>
+                <td><input type="text" class="cot-item-ipi" data-item-id="${it.id}" placeholder="15" value="15" style="max-width:60px;text-align:center;"></td>
+                <td><input type="text" class="cot-item-pis" data-item-id="${it.id}" placeholder="1,65" value="1,65" style="max-width:60px;text-align:center;"></td>
+                <td><input type="text" class="cot-item-cofins" data-item-id="${it.id}" placeholder="7,6" value="7,6" style="max-width:60px;text-align:center;"></td>
               </tr>`).join('')}
             </tbody>
           </table>
+          </div>
           <div class="modal-actions" style="justify-content:flex-start;margin-top:14px;">
             <button class="btn btn-primary" onclick="salvarCotacao('${id}')">+ Adicionar cotação</button>
           </div>
@@ -3800,30 +3811,34 @@ function renderPedidoDetail(id){
 }
 function renderComparativoCotacoes(o, items, quotes){
   const supplierName = q => { const s = state.suppliers.find(x=>x.id===q.supplier_id); return s ? s.nome : '—'; };
-  const valorItem = (quote, itemId) => {
-    const entry = (quote.itens||[]).find(x=>x.purchase_order_item_id===itemId);
-    return entry ? Number(entry.valor_unitario)||0 : 0;
+  const itemEntry = (quote, itemId) => (quote.itens||[]).find(x=>x.purchase_order_item_id===itemId);
+  const calc = (quote, item) => {
+    const e = itemEntry(quote, item.id);
+    if(!e || !e.valor_unitario) return null;
+    return calcularItemComImposto(Number(e.valor_unitario)||0, Number(e.aliq_icms)||0, Number(e.aliq_ipi)||0, Number(e.aliq_pis)||0, Number(e.aliq_cofins)||0, item.quantidade);
   };
 
   const rows = items.map(it=>{
-    const unitarios = quotes.map(q => valorItem(q, it.id));
-    const valores = quotes.map(q=>({ valor: valorItem(q, it.id) * it.quantidade }));
-    const validos = valores.filter(v=>v.valor>0);
-    const menor = validos.length ? Math.min(...validos.map(v=>v.valor)) : 0;
-    const cells = valores.map((v,idx)=>{
-      if(v.valor<=0) return `<td class="code" style="text-align:center;color:var(--ink-faint);">—</td>`;
-      const isMenor = v.valor === menor;
-      const diffPct = menor>0 ? ((v.valor-menor)/menor*100) : 0;
+    const calculos = quotes.map(q => calc(q, it));
+    const validos = calculos.filter(c=>c && c.totalComImposto>0);
+    const menor = validos.length ? Math.min(...validos.map(c=>c.totalComImposto)) : 0;
+    const cells = calculos.map(c=>{
+      if(!c || c.totalComImposto<=0) return `<td class="code" style="text-align:center;color:var(--ink-faint);">—</td>`;
+      const isMenor = c.totalComImposto === menor;
+      const diffPct = menor>0 ? ((c.totalComImposto-menor)/menor*100) : 0;
+      const creditos = c.valorIcms + c.valorPis + c.valorCofins;
       return `<td class="code" style="text-align:center;${isMenor?'background:#DCFCE7;font-weight:700;':''}">
-        <div style="font-size:11px;color:var(--ink-soft);font-weight:400;">Unit. ${formatBRL(unitarios[idx])}</div>
-        <div>Total ${formatBRL(v.valor)}</div>
+        <div style="font-size:10.5px;color:var(--ink-soft);font-weight:400;">Unit. s/imp. ${formatBRL(c.valorUnitSemImposto)}</div>
+        <div style="font-size:10.5px;color:var(--ink-soft);font-weight:400;">Unit. c/imp. ${formatBRL(c.valorUnitComImposto)}</div>
+        <div>Total c/imp. ${formatBRL(c.totalComImposto)}</div>
         ${!isMenor && menor>0 ? `<div style="font-size:10.5px;color:var(--red);">+${diffPct.toFixed(1)}%</div>` : ''}
+        <div style="font-size:9.5px;color:var(--blue);font-weight:400;">créd. impostos ${formatBRL(creditos)}</div>
       </td>`;
     }).join('');
     return `<tr><td>${escapeHtml(it.descricao)}</td>${cells}</tr>`;
   }).join('');
 
-  const totais = quotes.map(q => items.reduce((s,it)=>s + valorItem(q,it.id)*it.quantidade, 0));
+  const totais = quotes.map(q => items.reduce((s,it)=>{ const c = calc(q,it); return s + (c?c.totalComImposto:0); }, 0));
   const totaisValidos = totais.filter(t=>t>0);
   const menorTotal = totaisValidos.length ? Math.min(...totaisValidos) : 0;
   const totalCells = totais.map(t=>{
@@ -3848,6 +3863,7 @@ function renderComparativoCotacoes(o, items, quotes){
   }).join('');
 
   return `
+  <p style="font-size:12px;color:var(--ink-soft);margin:10px 0;">Valores em <strong>"Total c/imp."</strong> já incluem o IPI (é o que se paga de fato). "Créd. impostos" mostra ICMS+PIS+COFINS recuperáveis como crédito, apenas informativo.</p>
   <div class="card" style="padding:0;overflow-x:auto;">
     <table style="width:100%;">
       <thead>
@@ -3870,12 +3886,46 @@ function renderComparativoCotacoes(o, items, quotes){
     </table>
   </div>`;
 }
+function parsePct(str){
+  if(!str) return 0;
+  const v = parseFloat(String(str).trim().replace(',', '.'));
+  return isNaN(v) ? 0 : v/100;
+}
+function calcularItemComImposto(valorUnitSemImposto, aliqIcms, aliqIpi, aliqPis, aliqCofins, quantidade){
+  const valorUnitComImposto = valorUnitSemImposto * (1 + aliqIpi);
+  const totalSemImposto = valorUnitSemImposto * quantidade;
+  const totalComImposto = valorUnitComImposto * quantidade;
+  return {
+    valorUnitSemImposto,
+    valorUnitComImposto,
+    totalSemImposto,
+    totalComImposto,
+    valorIpi: totalSemImposto * aliqIpi,
+    valorIcms: totalComImposto * aliqIcms,
+    valorPis: totalSemImposto * aliqPis,
+    valorCofins: totalSemImposto * aliqCofins
+  };
+}
 async function salvarCotacao(pedidoId){
   const supplierId = document.getElementById('cot_fornecedor').value;
   const prazo = document.getElementById('cot_prazo').value.trim();
   if(!supplierId){ showToast('Selecione um fornecedor.'); return; }
   const valorInputs = [...document.querySelectorAll('.cot-item-valor')];
-  const itens = valorInputs.map(inp => ({ purchase_order_item_id: inp.dataset.itemId, valor_unitario: parseBRL(inp.value) })).filter(x=>x.valor_unitario>0);
+  const itens = valorInputs.map(inp => {
+    const itemId = inp.dataset.itemId;
+    const icmsInp = document.querySelector(`.cot-item-icms[data-item-id="${itemId}"]`);
+    const ipiInp = document.querySelector(`.cot-item-ipi[data-item-id="${itemId}"]`);
+    const pisInp = document.querySelector(`.cot-item-pis[data-item-id="${itemId}"]`);
+    const cofinsInp = document.querySelector(`.cot-item-cofins[data-item-id="${itemId}"]`);
+    return {
+      purchase_order_item_id: itemId,
+      valor_unitario: parseBRL(inp.value),
+      aliq_icms: parsePct(icmsInp?.value),
+      aliq_ipi: parsePct(ipiInp?.value),
+      aliq_pis: parsePct(pisInp?.value),
+      aliq_cofins: parsePct(cofinsInp?.value)
+    };
+  }).filter(x=>x.valor_unitario>0);
   if(itens.length===0){ showToast('Informe ao menos um valor de item.'); return; }
   const quote = { id: uid(), purchase_order_id: pedidoId, supplier_id: supplierId, prazo_entrega: prazo || null, itens };
   state.purchaseOrderQuotes.push(quote);
@@ -3901,7 +3951,9 @@ async function aprovarCotacao(quoteId){
   if(!po) return;
   const total = (q.itens||[]).reduce((s,x)=>{
     const item = state.purchaseOrderItems.find(i=>i.id===x.purchase_order_item_id);
-    return s + (Number(x.valor_unitario)||0) * (item?.quantidade||1);
+    if(!item) return s;
+    const c = calcularItemComImposto(Number(x.valor_unitario)||0, Number(x.aliq_icms)||0, Number(x.aliq_ipi)||0, Number(x.aliq_pis)||0, Number(x.aliq_cofins)||0, item.quantidade);
+    return s + c.totalComImposto;
   }, 0);
   po.etapa = 'aprovado';
   po.aprovado_quote_id = quoteId;
