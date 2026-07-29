@@ -10,6 +10,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <style>
   :root{
@@ -444,6 +445,23 @@
         <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 6h6"/><rect x="8" y="10" width="8" height="6" rx="1"/></svg>
         <span>Controle de Chip</span>
       </div>
+      <div class="nav-section-label" id="finSectionLabel" style="display:none;">Financeiro</div>
+      <div class="nav-item" id="navFinPedidos" data-view="fin-pedidos" onclick="switchView('fin-pedidos')" style="display:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+        <span>Pedidos de Compra</span>
+      </div>
+      <div class="nav-item" id="navFinNotas" data-view="fin-notas" onclick="switchView('fin-notas')" style="display:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><line x1="8" y1="9" x2="10" y2="9"/></svg>
+        <span>Notas Fiscais</span>
+      </div>
+      <div class="nav-item" id="navFinPagamentos" data-view="fin-pagamentos" onclick="switchView('fin-pagamentos')" style="display:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+        <span>Pagamentos</span>
+      </div>
+      <div class="nav-item" id="navFinResumo" data-view="fin-resumo" onclick="switchView('fin-resumo')" style="display:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+        <span>Resumo Financeiro</span>
+      </div>
       <div class="nav-section-label" id="adminSectionLabel" style="display:none;">Administração</div>
       <div class="nav-item" id="navUsers" data-view="users" onclick="switchView('users')" style="display:none;">
         <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
@@ -818,6 +836,7 @@
                   <option value="Vivo"><option value="Claro"><option value="TIM"><option value="Oi">
                 </datalist>
               </div>
+              <datalist id="fornecedoresList"></datalist>
               <div class="form-field">
                 <label>Data de entrada</label>
                 <input type="date" id="chip_data">
@@ -842,6 +861,244 @@
         </div>
         <div class="card" style="padding:0;overflow-x:auto;">
           <div id="chipTableWrap"></div>
+        </div>
+      </div>
+
+      <!-- FINANCEIRO: PEDIDOS DE COMPRA -->
+      <div class="view" id="view-fin-pedidos">
+        <div class="page-head">
+          <div>
+            <h2>Pedidos de Compra</h2>
+            <p>Registre os pedidos feitos a fornecedores e acompanhe o status de cada um.</p>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+            <h3 id="pedidoFormTitle">Novo pedido de compra</h3>
+          </div>
+          <div class="card-body" style="padding-top:16px;">
+            <div class="form-grid">
+              <div class="form-field">
+                <label>Número do pedido *</label>
+                <input type="text" id="pc_numero" placeholder="Ex.: PC-0001">
+              </div>
+              <div class="form-field">
+                <label>Fornecedor</label>
+                <input type="text" id="pc_fornecedor" list="fornecedoresList">
+              </div>
+              <div class="form-field">
+                <label>Data do pedido</label>
+                <input type="date" id="pc_data">
+              </div>
+              <div class="form-field">
+                <label>Valor total (R$)</label>
+                <input type="text" id="pc_valor" placeholder="0,00">
+              </div>
+              <div class="form-field">
+                <label>Status</label>
+                <select id="pc_status">
+                  <option>Pendente</option>
+                  <option>Aprovado</option>
+                  <option>Recebido</option>
+                  <option>Cancelado</option>
+                </select>
+              </div>
+              <div class="form-field full">
+                <label>Observações</label>
+                <textarea id="pc_obs" rows="2"></textarea>
+              </div>
+            </div>
+            <div class="modal-actions" style="justify-content:flex-start;margin-top:18px;">
+              <button type="button" class="btn btn-primary" id="pcSubmitBtn" onclick="savePurchaseOrder(event)">Cadastrar pedido</button>
+              <button type="button" class="btn btn-outline" id="pcCancelBtn" style="display:none;" onclick="resetPurchaseOrderForm()">Cancelar edição</button>
+            </div>
+          </div>
+        </div>
+        <div class="section-title">
+          <h3>Pedidos cadastrados</h3>
+          <span class="count" id="pcCount"></span>
+        </div>
+        <div class="search-row">
+          <input type="text" id="pcSearchInput" placeholder="Buscar por número, fornecedor ou status..." oninput="renderPurchaseOrders(this.value)">
+        </div>
+        <div class="card" style="padding:0;overflow-x:auto;">
+          <div id="pcTableWrap"></div>
+        </div>
+      </div>
+
+      <!-- FINANCEIRO: NOTAS FISCAIS -->
+      <div class="view" id="view-fin-notas">
+        <div class="page-head">
+          <div>
+            <h2>Notas Fiscais</h2>
+            <p>Cadastre a nota e adicione os itens comprados, cada um com sua categoria de gasto.</p>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>
+            <h3 id="notaFormTitle">Nova nota fiscal</h3>
+          </div>
+          <div class="card-body" style="padding-top:16px;">
+            <div class="form-grid">
+              <div class="form-field">
+                <label>Número da NF *</label>
+                <input type="text" id="nf_numero" placeholder="Ex.: 12345">
+              </div>
+              <div class="form-field">
+                <label>Fornecedor</label>
+                <input type="text" id="nf_fornecedor" list="fornecedoresList">
+              </div>
+              <div class="form-field">
+                <label>Data de emissão</label>
+                <input type="date" id="nf_data">
+              </div>
+              <div class="form-field full">
+                <label>Observações</label>
+                <textarea id="nf_obs" rows="2"></textarea>
+              </div>
+            </div>
+
+            <div class="section-title" style="margin-top:6px;">
+              <h3 style="font-size:13.5px;">Itens da nota</h3>
+              <span class="count" id="nfItemsTotal">R$ 0,00</span>
+            </div>
+            <div id="nfItemsList" style="margin-bottom:10px;"></div>
+            <div style="display:grid;grid-template-columns:2fr 1.3fr 1fr auto;gap:8px;align-items:end;">
+              <div class="form-field" style="margin-bottom:0;">
+                <label>Descrição do item</label>
+                <input type="text" id="nfi_descricao" placeholder="Ex.: Cabo de fibra óptica">
+              </div>
+              <div class="form-field" style="margin-bottom:0;">
+                <label>Categoria</label>
+                <input type="text" id="nfi_categoria" list="categoriasGastoList" placeholder="Ex.: Material de rede">
+                <datalist id="categoriasGastoList"></datalist>
+              </div>
+              <div class="form-field" style="margin-bottom:0;">
+                <label>Valor (R$)</label>
+                <input type="text" id="nfi_valor" placeholder="0,00">
+              </div>
+              <button type="button" class="btn btn-outline" onclick="adicionarItemNota()">+ Item</button>
+            </div>
+
+            <div class="modal-actions" style="justify-content:flex-start;margin-top:18px;">
+              <button type="button" class="btn btn-primary" id="nfSubmitBtn" onclick="saveInvoice(event)">Cadastrar nota fiscal</button>
+              <button type="button" class="btn btn-outline" id="nfCancelBtn" style="display:none;" onclick="resetInvoiceForm()">Cancelar edição</button>
+            </div>
+          </div>
+        </div>
+        <div class="section-title">
+          <h3>Notas cadastradas</h3>
+          <span class="count" id="nfCount"></span>
+        </div>
+        <div class="search-row">
+          <input type="text" id="nfSearchInput" placeholder="Buscar por número ou fornecedor..." oninput="renderInvoices(this.value)">
+        </div>
+        <div class="card" style="padding:0;overflow-x:auto;">
+          <div id="nfTableWrap"></div>
+        </div>
+      </div>
+
+      <!-- FINANCEIRO: PAGAMENTOS -->
+      <div class="view" id="view-fin-pagamentos">
+        <div class="page-head">
+          <div>
+            <h2>Pagamentos</h2>
+            <p>Registre os pagamentos realizados, vinculando a uma nota fiscal quando houver.</p>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+            <h3 id="pagamentoFormTitle">Novo pagamento</h3>
+          </div>
+          <div class="card-body" style="padding-top:16px;">
+            <div class="form-grid">
+              <div class="form-field full">
+                <label>Descrição *</label>
+                <input type="text" id="pg_descricao" placeholder="Ex.: Pagamento fornecedor XPTO">
+              </div>
+              <div class="form-field">
+                <label>Valor (R$) *</label>
+                <input type="text" id="pg_valor" placeholder="0,00">
+              </div>
+              <div class="form-field">
+                <label>Data de pagamento</label>
+                <input type="date" id="pg_data">
+              </div>
+              <div class="form-field">
+                <label>Forma de pagamento</label>
+                <select id="pg_forma">
+                  <option>Pix</option>
+                  <option>Boleto</option>
+                  <option>Cartão</option>
+                  <option>Transferência</option>
+                  <option>Dinheiro</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label>Status</label>
+                <select id="pg_status">
+                  <option>Pendente</option>
+                  <option>Pago</option>
+                </select>
+              </div>
+              <div class="form-field full">
+                <label>Nota fiscal vinculada (opcional)</label>
+                <select id="pg_invoice"><option value="">Nenhuma</option></select>
+              </div>
+              <div class="form-field full">
+                <label>Observações</label>
+                <textarea id="pg_obs" rows="2"></textarea>
+              </div>
+            </div>
+            <div class="modal-actions" style="justify-content:flex-start;margin-top:18px;">
+              <button type="button" class="btn btn-primary" id="pgSubmitBtn" onclick="savePayment(event)">Cadastrar pagamento</button>
+              <button type="button" class="btn btn-outline" id="pgCancelBtn" style="display:none;" onclick="resetPaymentForm()">Cancelar edição</button>
+            </div>
+          </div>
+        </div>
+        <div class="section-title">
+          <h3>Pagamentos cadastrados</h3>
+          <span class="count" id="pgCount"></span>
+        </div>
+        <div class="search-row">
+          <input type="text" id="pgSearchInput" placeholder="Buscar por descrição, forma ou status..." oninput="renderPayments(this.value)">
+        </div>
+        <div class="card" style="padding:0;overflow-x:auto;">
+          <div id="pgTableWrap"></div>
+        </div>
+      </div>
+
+      <!-- FINANCEIRO: RESUMO -->
+      <div class="view" id="view-fin-resumo">
+        <div class="page-head">
+          <div>
+            <h2>Resumo Financeiro</h2>
+            <p>Gastos por categoria ao longo do tempo, com base nos itens lançados nas notas fiscais.</p>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-bottom:18px;">
+          <div class="card">
+            <div class="card-body" style="padding-top:16px;">
+              <div class="status-row"><div class="label"><span>Total em Notas Fiscais</span></div><div class="value" id="resumoTotalNotas">R$ 0,00</div></div>
+              <div class="status-row"><div class="label"><span>Total em Pagamentos</span></div><div class="value" id="resumoTotalPagamentos">R$ 0,00</div></div>
+              <div class="status-row"><div class="label"><span>Pedidos pendentes</span></div><div class="value" id="resumoPedidosPendentes">0</div></div>
+              <div class="status-row"><div class="label"><span>Pagamentos pendentes</span></div><div class="value" id="resumoPagamentosPendentes">0</div></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-body" style="padding-top:16px;">
+              <label style="font-size:12px;font-weight:700;color:var(--ink-soft);display:block;margin-bottom:8px;">Filtrar por categoria (clique para ativar/desativar)</label>
+              <div id="resumoCategoriaFiltros" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-body" style="padding-top:16px;">
+            <canvas id="resumoChart" height="90"></canvas>
+          </div>
         </div>
       </div>
 
@@ -1103,6 +1360,23 @@
           <option value="admin">Administrador</option>
         </select>
       </div>
+      <div class="form-field full">
+        <label>Acesso ao Financeiro</label>
+        <div style="display:flex;flex-wrap:wrap;gap:14px;padding:10px 0;">
+          <label style="display:flex;align-items:center;gap:6px;font-weight:500;font-size:13px;">
+            <input type="checkbox" id="u_fin_pedidos" style="width:auto;"> Pedidos de Compra
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;font-weight:500;font-size:13px;">
+            <input type="checkbox" id="u_fin_notas" style="width:auto;"> Notas Fiscais
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;font-weight:500;font-size:13px;">
+            <input type="checkbox" id="u_fin_pagamentos" style="width:auto;"> Pagamentos
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;font-weight:500;font-size:13px;">
+            <input type="checkbox" id="u_fin_resumo" style="width:auto;"> Resumo Financeiro
+          </label>
+        </div>
+      </div>
     </div>
     <div class="modal-actions">
       <button type="button" class="btn btn-outline" onclick="closeModal('modalUser')">Cancelar</button>
@@ -1174,7 +1448,16 @@ let state = {
   currentUser: null,
   editingUserId: null,
   selectedEpiCatalogId: null,
-  valeEmployeeId: null
+  valeEmployeeId: null,
+  purchaseOrders: [],
+  invoices: [],
+  invoiceItems: [],
+  payments: [],
+  editingPurchaseOrderId: null,
+  editingInvoiceId: null,
+  editingPaymentId: null,
+  nfDraftItems: [],
+  resumoCategoriasAtivas: null
 };
 
 const ICONS = {
@@ -1258,6 +1541,28 @@ async function loadAll(){
     if(error) throw error;
     state.epiCatalog = data || [];
   }catch(e){ state.epiCatalog = state.epiCatalog || []; showToast('Erro ao carregar catálogo de EPI/EPC: ' + (e.message||e)); }
+  try{
+    const { data, error } = await sb.from('purchase_orders').select('*').order('created_at', { ascending:false });
+    if(error) throw error;
+    state.purchaseOrders = data || [];
+  }catch(e){ state.purchaseOrders = state.purchaseOrders || []; }
+  try{
+    const { data, error } = await sb.from('invoices').select('*').order('created_at', { ascending:false });
+    if(error) throw error;
+    state.invoices = data || [];
+  }catch(e){ state.invoices = state.invoices || []; }
+  try{
+    const { data, error } = await sb.from('invoice_items').select('*');
+    if(error) throw error;
+    state.invoiceItems = data || [];
+  }catch(e){ state.invoiceItems = state.invoiceItems || []; }
+  try{
+    const { data, error } = await sb.from('payments').select('*').order('created_at', { ascending:false });
+    if(error) throw error;
+    state.payments = data || [];
+  }catch(e){ state.payments = state.payments || []; }
+  refreshFornecedoresList();
+  refreshCategoriasGastoList();
   state.loaded = true;
 }
 function checkStorageHealth(){
@@ -1451,12 +1756,23 @@ function showToast(msg){
   setTimeout(()=>t.classList.remove('show'), 2200);
 }
 
-const PAGE_TITLES = { home:'Início', employees:'Colaboradores', ficha:'Ficha do colaborador', stock:'Cadastrar itens', items:'Buscar item', users:'Usuários', vale:'Emitir vale', chip:'Controle de Chip' };
+const PAGE_TITLES = { home:'Início', employees:'Colaboradores', ficha:'Ficha do colaborador', stock:'Cadastrar itens', items:'Buscar item', users:'Usuários', vale:'Emitir vale', chip:'Controle de Chip', 'fin-pedidos':'Pedidos de Compra', 'fin-notas':'Notas Fiscais', 'fin-pagamentos':'Pagamentos', 'fin-resumo':'Resumo Financeiro' };
+const FIN_VIEW_TO_TAB = { 'fin-pedidos':'pedidos', 'fin-notas':'notas', 'fin-pagamentos':'pagamentos', 'fin-resumo':'resumo' };
+function canAccessFin(tabKey){
+  if(!state.currentUser) return false;
+  if(state.currentUser.role === 'desenvolvedor') return true;
+  const acesso = state.currentUser.fin_acesso || [];
+  return acesso.includes(tabKey);
+}
 
 // ---------- view switching ----------
 async function switchView(name){
   if(name==='users' && (!state.currentUser || (state.currentUser.role!=='admin' && state.currentUser.role!=='desenvolvedor'))){
     showToast('Apenas administradores podem acessar essa área.');
+    name = 'home';
+  }
+  if(FIN_VIEW_TO_TAB[name] && !canAccessFin(FIN_VIEW_TO_TAB[name])){
+    showToast('Você não tem permissão para acessar essa área financeira.');
     name = 'home';
   }
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
@@ -1473,6 +1789,10 @@ async function switchView(name){
   if(name==='stock'){ updateStockCategoryFields(); renderStockTable(); renderEpiCatalogTable(); renderFerramentalCatalogTable(); }
   if(name==='items') renderItemsSearch();
   if(name==='chip') renderChipTable();
+  if(name==='fin-pedidos') renderPurchaseOrders();
+  if(name==='fin-notas') renderInvoices();
+  if(name==='fin-pagamentos') renderPayments();
+  if(name==='fin-resumo') renderResumoFinanceiro();
   if(name==='vale'){ if(state.valeEmployeeId) renderValeItemsChecklist(); }
 }
 
@@ -3009,6 +3329,475 @@ function resolveConfirm(val){
   if(_confirmResolve){ _confirmResolve(val); _confirmResolve = null; }
 }
 
+// ---------- FINANCEIRO: PEDIDOS DE COMPRA ----------
+async function dbInsertPurchaseOrder(o){
+  const { error } = await sb.from('purchase_orders').insert(o);
+  if(error) showToast('Erro ao salvar pedido: ' + error.message);
+}
+async function dbUpdatePurchaseOrder(o){
+  const { error } = await sb.from('purchase_orders').update(o).eq('id', o.id);
+  if(error) showToast('Erro ao salvar pedido: ' + error.message);
+}
+async function dbDeletePurchaseOrder(id){
+  const { error } = await sb.from('purchase_orders').delete().eq('id', id);
+  if(error) showToast('Erro ao excluir pedido: ' + error.message);
+}
+function resetPurchaseOrderForm(){
+  state.editingPurchaseOrderId = null;
+  document.getElementById('pedidoFormTitle').textContent = 'Novo pedido de compra';
+  document.getElementById('pc_numero').value = '';
+  document.getElementById('pc_fornecedor').value = '';
+  document.getElementById('pc_data').value = '';
+  document.getElementById('pc_valor').value = '';
+  document.getElementById('pc_status').value = 'Pendente';
+  document.getElementById('pc_obs').value = '';
+  document.getElementById('pcSubmitBtn').textContent = 'Cadastrar pedido';
+  document.getElementById('pcCancelBtn').style.display = 'none';
+}
+async function savePurchaseOrder(evt){
+  evt.preventDefault();
+  const numero = document.getElementById('pc_numero').value.trim();
+  if(!numero){ showToast('Preencha o número do pedido.'); return; }
+  const data = {
+    numero,
+    fornecedor: document.getElementById('pc_fornecedor').value.trim() || null,
+    data_pedido: document.getElementById('pc_data').value || null,
+    valor_total: parseBRL(document.getElementById('pc_valor').value),
+    status: document.getElementById('pc_status').value,
+    obs: document.getElementById('pc_obs').value.trim() || null
+  };
+  if(state.editingPurchaseOrderId){
+    data.id = state.editingPurchaseOrderId;
+    const idx = state.purchaseOrders.findIndex(o=>o.id===data.id);
+    if(idx>-1) state.purchaseOrders[idx] = { ...state.purchaseOrders[idx], ...data };
+    dbUpdatePurchaseOrder(data);
+    showToast('Pedido atualizado.');
+  }else{
+    data.id = uid();
+    state.purchaseOrders.unshift(data);
+    dbInsertPurchaseOrder(data);
+    showToast('Pedido cadastrado.');
+  }
+  refreshFornecedoresList();
+  resetPurchaseOrderForm();
+  renderPurchaseOrders();
+}
+function editPurchaseOrder(id){
+  const o = state.purchaseOrders.find(x=>x.id===id);
+  if(!o) return;
+  state.editingPurchaseOrderId = id;
+  document.getElementById('pedidoFormTitle').textContent = 'Editar pedido de compra';
+  document.getElementById('pc_numero').value = o.numero || '';
+  document.getElementById('pc_fornecedor').value = o.fornecedor || '';
+  document.getElementById('pc_data').value = o.data_pedido || '';
+  document.getElementById('pc_valor').value = o.valor_total != null ? String(o.valor_total).replace('.',',') : '';
+  document.getElementById('pc_status').value = o.status || 'Pendente';
+  document.getElementById('pc_obs').value = o.obs || '';
+  document.getElementById('pcSubmitBtn').textContent = 'Salvar alterações';
+  document.getElementById('pcCancelBtn').style.display = 'inline-flex';
+  window.scrollTo(0,0);
+}
+async function deletePurchaseOrder(id){
+  const o = state.purchaseOrders.find(x=>x.id===id);
+  if(!o) return;
+  if(!(await customConfirm(`Excluir o pedido "${o.numero}"?`))) return;
+  state.purchaseOrders = state.purchaseOrders.filter(x=>x.id!==id);
+  renderPurchaseOrders();
+  showToast('Pedido excluído.');
+  dbDeletePurchaseOrder(id);
+}
+function renderPurchaseOrders(filter){
+  filter = filter!==undefined ? filter : (document.getElementById('pcSearchInput')?.value || '');
+  const wrap = document.getElementById('pcTableWrap');
+  const q = normalize(filter);
+  let list = state.purchaseOrders.slice();
+  if(q) list = list.filter(o=>[o.numero,o.fornecedor,o.status].some(f=>normalize(f).includes(q)));
+  document.getElementById('pcCount').textContent = `${list.length} pedido(s)`;
+  if(list.length===0){
+    wrap.innerHTML = `<div class="empty-state"><div class="icon">📦</div><p>Nenhum pedido de compra cadastrado ainda.</p></div>`;
+    return;
+  }
+  const statusBadge = s => s==='Recebido' ? 'badge-posse' : (s==='Cancelado' ? 'badge-devolvido' : (s==='Aprovado' ? 'badge-estoque' : 'badge-cat-informatica'));
+  const rows = list.map(o=>`
+    <tr>
+      <td class="code">${escapeHtml(o.numero)}</td>
+      <td>${escapeHtml(o.fornecedor||'—')}</td>
+      <td class="code">${fmtDate(o.data_pedido)}</td>
+      <td class="code">${formatBRL(o.valor_total||0)}</td>
+      <td><span class="badge ${statusBadge(o.status)}">${escapeHtml(o.status||'Pendente')}</span></td>
+      <td class="row-actions">
+        <button class="btn btn-outline btn-sm" onclick="editPurchaseOrder('${o.id}')">Editar</button>
+        <button class="btn btn-danger btn-sm" onclick="deletePurchaseOrder('${o.id}')">Excluir</button>
+      </td>
+    </tr>`).join('');
+  wrap.innerHTML = `<table>
+    <thead><tr><th>Número</th><th>Fornecedor</th><th>Data</th><th>Valor</th><th>Status</th><th></th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+// ---------- FINANCEIRO: NOTAS FISCAIS ----------
+async function dbInsertInvoice(inv, items){
+  const { error } = await sb.from('invoices').insert(inv);
+  if(error){ showToast('Erro ao salvar nota fiscal: ' + error.message); return; }
+  if(items.length){
+    const { error: err2 } = await sb.from('invoice_items').insert(items);
+    if(err2) showToast('Erro ao salvar itens da nota: ' + err2.message);
+  }
+}
+async function dbUpdateInvoice(inv, items){
+  const { error } = await sb.from('invoices').update(inv).eq('id', inv.id);
+  if(error){ showToast('Erro ao salvar nota fiscal: ' + error.message); return; }
+  await sb.from('invoice_items').delete().eq('invoice_id', inv.id);
+  if(items.length){
+    const { error: err2 } = await sb.from('invoice_items').insert(items);
+    if(err2) showToast('Erro ao salvar itens da nota: ' + err2.message);
+  }
+}
+async function dbDeleteInvoice(id){
+  const { error } = await sb.from('invoices').delete().eq('id', id);
+  if(error) showToast('Erro ao excluir nota fiscal: ' + error.message);
+}
+function refreshCategoriasGastoList(){
+  const cats = [...new Set(state.invoiceItems.map(i=>i.categoria).filter(Boolean))];
+  document.getElementById('categoriasGastoList').innerHTML = cats.map(c=>`<option value="${escapeHtml(c)}">`).join('');
+}
+function refreshFornecedoresList(){
+  const fornecedores = [...new Set([
+    ...state.purchaseOrders.map(o=>o.fornecedor),
+    ...state.invoices.map(i=>i.fornecedor)
+  ].filter(Boolean))];
+  document.getElementById('fornecedoresList').innerHTML = fornecedores.map(f=>`<option value="${escapeHtml(f)}">`).join('');
+}
+function adicionarItemNota(){
+  const descricao = document.getElementById('nfi_descricao').value.trim();
+  const categoria = document.getElementById('nfi_categoria').value.trim();
+  const valor = parseBRL(document.getElementById('nfi_valor').value);
+  if(!descricao){ showToast('Preencha a descrição do item.'); return; }
+  if(!categoria){ showToast('Preencha a categoria do item.'); return; }
+  state.nfDraftItems.push({ id: uid(), descricao, categoria, valor });
+  document.getElementById('nfi_descricao').value = '';
+  document.getElementById('nfi_categoria').value = '';
+  document.getElementById('nfi_valor').value = '';
+  renderNfDraftItems();
+}
+function removerItemNota(itemId){
+  state.nfDraftItems = state.nfDraftItems.filter(i=>i.id!==itemId);
+  renderNfDraftItems();
+}
+function renderNfDraftItems(){
+  const wrap = document.getElementById('nfItemsList');
+  if(state.nfDraftItems.length===0){
+    wrap.innerHTML = `<div style="font-size:12.5px;color:var(--ink-faint);padding:8px 0;">Nenhum item adicionado ainda.</div>`;
+  }else{
+    wrap.innerHTML = state.nfDraftItems.map(it=>`
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
+        <div style="flex:1;"><strong>${escapeHtml(it.descricao)}</strong> <span class="badge badge-cat-informatica">${escapeHtml(it.categoria)}</span></div>
+        <div class="code">${formatBRL(it.valor)}</div>
+        <button class="btn btn-danger btn-sm" onclick="removerItemNota('${it.id}')">Remover</button>
+      </div>`).join('');
+  }
+  const total = state.nfDraftItems.reduce((s,i)=>s+i.valor,0);
+  document.getElementById('nfItemsTotal').textContent = formatBRL(total);
+}
+function resetInvoiceForm(){
+  state.editingInvoiceId = null;
+  state.nfDraftItems = [];
+  document.getElementById('notaFormTitle').textContent = 'Nova nota fiscal';
+  document.getElementById('nf_numero').value = '';
+  document.getElementById('nf_fornecedor').value = '';
+  document.getElementById('nf_data').value = '';
+  document.getElementById('nf_obs').value = '';
+  document.getElementById('nfi_descricao').value = '';
+  document.getElementById('nfi_categoria').value = '';
+  document.getElementById('nfi_valor').value = '';
+  document.getElementById('nfSubmitBtn').textContent = 'Cadastrar nota fiscal';
+  document.getElementById('nfCancelBtn').style.display = 'none';
+  renderNfDraftItems();
+}
+async function saveInvoice(evt){
+  evt.preventDefault();
+  const numero = document.getElementById('nf_numero').value.trim();
+  if(!numero){ showToast('Preencha o número da NF.'); return; }
+  if(state.nfDraftItems.length===0){ showToast('Adicione ao menos um item à nota.'); return; }
+  const valorTotal = state.nfDraftItems.reduce((s,i)=>s+i.valor,0);
+  const invoiceId = state.editingInvoiceId || uid();
+  const inv = {
+    id: invoiceId,
+    numero,
+    fornecedor: document.getElementById('nf_fornecedor').value.trim() || null,
+    data_emissao: document.getElementById('nf_data').value || null,
+    valor_total: valorTotal,
+    obs: document.getElementById('nf_obs').value.trim() || null
+  };
+  const items = state.nfDraftItems.map(i => ({ id: i.id, invoice_id: invoiceId, descricao: i.descricao, categoria: i.categoria, valor: i.valor }));
+
+  if(state.editingInvoiceId){
+    const idx = state.invoices.findIndex(x=>x.id===invoiceId);
+    if(idx>-1) state.invoices[idx] = { ...state.invoices[idx], ...inv };
+    state.invoiceItems = state.invoiceItems.filter(i=>i.invoice_id!==invoiceId).concat(items);
+    dbUpdateInvoice(inv, items);
+    showToast('Nota fiscal atualizada.');
+  }else{
+    state.invoices.unshift(inv);
+    state.invoiceItems.push(...items);
+    dbInsertInvoice(inv, items);
+    showToast('Nota fiscal cadastrada.');
+  }
+  refreshFornecedoresList();
+  refreshCategoriasGastoList();
+  resetInvoiceForm();
+  renderInvoices();
+}
+function editInvoice(id){
+  const inv = state.invoices.find(x=>x.id===id);
+  if(!inv) return;
+  state.editingInvoiceId = id;
+  state.nfDraftItems = state.invoiceItems.filter(i=>i.invoice_id===id).map(i=>({ id:i.id, descricao:i.descricao, categoria:i.categoria, valor:Number(i.valor)||0 }));
+  document.getElementById('notaFormTitle').textContent = 'Editar nota fiscal';
+  document.getElementById('nf_numero').value = inv.numero || '';
+  document.getElementById('nf_fornecedor').value = inv.fornecedor || '';
+  document.getElementById('nf_data').value = inv.data_emissao || '';
+  document.getElementById('nf_obs').value = inv.obs || '';
+  document.getElementById('nfSubmitBtn').textContent = 'Salvar alterações';
+  document.getElementById('nfCancelBtn').style.display = 'inline-flex';
+  renderNfDraftItems();
+  window.scrollTo(0,0);
+}
+async function deleteInvoice(id){
+  const inv = state.invoices.find(x=>x.id===id);
+  if(!inv) return;
+  if(!(await customConfirm(`Excluir a nota fiscal "${inv.numero}"? Os itens dela também serão removidos.`))) return;
+  state.invoices = state.invoices.filter(x=>x.id!==id);
+  state.invoiceItems = state.invoiceItems.filter(i=>i.invoice_id!==id);
+  renderInvoices();
+  showToast('Nota fiscal excluída.');
+  dbDeleteInvoice(id);
+}
+function renderInvoices(filter){
+  filter = filter!==undefined ? filter : (document.getElementById('nfSearchInput')?.value || '');
+  const wrap = document.getElementById('nfTableWrap');
+  const q = normalize(filter);
+  let list = state.invoices.slice();
+  if(q) list = list.filter(i=>[i.numero,i.fornecedor].some(f=>normalize(f).includes(q)));
+  document.getElementById('nfCount').textContent = `${list.length} nota(s)`;
+  if(list.length===0){
+    wrap.innerHTML = `<div class="empty-state"><div class="icon">🧾</div><p>Nenhuma nota fiscal cadastrada ainda.</p></div>`;
+    return;
+  }
+  const rows = list.map(inv=>{
+    const qtdItens = state.invoiceItems.filter(i=>i.invoice_id===inv.id).length;
+    return `<tr>
+      <td class="code">${escapeHtml(inv.numero)}</td>
+      <td>${escapeHtml(inv.fornecedor||'—')}</td>
+      <td class="code">${fmtDate(inv.data_emissao)}</td>
+      <td class="code">${formatBRL(inv.valor_total||0)}</td>
+      <td><em>${qtdItens} item(ns)</em></td>
+      <td class="row-actions">
+        <button class="btn btn-outline btn-sm" onclick="editInvoice('${inv.id}')">Editar</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteInvoice('${inv.id}')">Excluir</button>
+      </td>
+    </tr>`;
+  }).join('');
+  wrap.innerHTML = `<table>
+    <thead><tr><th>Número</th><th>Fornecedor</th><th>Emissão</th><th>Valor total</th><th>Itens</th><th></th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+// ---------- FINANCEIRO: PAGAMENTOS ----------
+async function dbInsertPayment(p){
+  const { error } = await sb.from('payments').insert(p);
+  if(error) showToast('Erro ao salvar pagamento: ' + error.message);
+}
+async function dbUpdatePayment(p){
+  const { error } = await sb.from('payments').update(p).eq('id', p.id);
+  if(error) showToast('Erro ao salvar pagamento: ' + error.message);
+}
+async function dbDeletePayment(id){
+  const { error } = await sb.from('payments').delete().eq('id', id);
+  if(error) showToast('Erro ao excluir pagamento: ' + error.message);
+}
+function refreshInvoiceSelect(){
+  const sel = document.getElementById('pg_invoice');
+  const atual = sel.value;
+  const list = state.invoices.slice().sort((a,b)=>(b.data_emissao||'').localeCompare(a.data_emissao||''));
+  sel.innerHTML = '<option value="">Nenhuma</option>' + list.map(i=>`<option value="${i.id}">${escapeHtml(i.numero)} — ${escapeHtml(i.fornecedor||'—')} (${formatBRL(i.valor_total||0)})</option>`).join('');
+  sel.value = atual || '';
+}
+function resetPaymentForm(){
+  state.editingPaymentId = null;
+  document.getElementById('pagamentoFormTitle').textContent = 'Novo pagamento';
+  document.getElementById('pg_descricao').value = '';
+  document.getElementById('pg_valor').value = '';
+  document.getElementById('pg_data').value = '';
+  document.getElementById('pg_forma').value = 'Pix';
+  document.getElementById('pg_status').value = 'Pendente';
+  document.getElementById('pg_invoice').value = '';
+  document.getElementById('pg_obs').value = '';
+  document.getElementById('pgSubmitBtn').textContent = 'Cadastrar pagamento';
+  document.getElementById('pgCancelBtn').style.display = 'none';
+}
+async function savePayment(evt){
+  evt.preventDefault();
+  const descricao = document.getElementById('pg_descricao').value.trim();
+  const valor = parseBRL(document.getElementById('pg_valor').value);
+  if(!descricao || !valor){ showToast('Preencha a descrição e o valor.'); return; }
+  const data = {
+    descricao,
+    valor,
+    data_pagamento: document.getElementById('pg_data').value || null,
+    forma_pagamento: document.getElementById('pg_forma').value,
+    status: document.getElementById('pg_status').value,
+    invoice_id: document.getElementById('pg_invoice').value || null,
+    obs: document.getElementById('pg_obs').value.trim() || null
+  };
+  if(state.editingPaymentId){
+    data.id = state.editingPaymentId;
+    const idx = state.payments.findIndex(p=>p.id===data.id);
+    if(idx>-1) state.payments[idx] = { ...state.payments[idx], ...data };
+    dbUpdatePayment(data);
+    showToast('Pagamento atualizado.');
+  }else{
+    data.id = uid();
+    state.payments.unshift(data);
+    dbInsertPayment(data);
+    showToast('Pagamento cadastrado.');
+  }
+  resetPaymentForm();
+  renderPayments();
+}
+function editPayment(id){
+  const p = state.payments.find(x=>x.id===id);
+  if(!p) return;
+  state.editingPaymentId = id;
+  document.getElementById('pagamentoFormTitle').textContent = 'Editar pagamento';
+  document.getElementById('pg_descricao').value = p.descricao || '';
+  document.getElementById('pg_valor').value = p.valor != null ? String(p.valor).replace('.',',') : '';
+  document.getElementById('pg_data').value = p.data_pagamento || '';
+  document.getElementById('pg_forma').value = p.forma_pagamento || 'Pix';
+  document.getElementById('pg_status').value = p.status || 'Pendente';
+  refreshInvoiceSelect();
+  document.getElementById('pg_invoice').value = p.invoice_id || '';
+  document.getElementById('pg_obs').value = p.obs || '';
+  document.getElementById('pgSubmitBtn').textContent = 'Salvar alterações';
+  document.getElementById('pgCancelBtn').style.display = 'inline-flex';
+  window.scrollTo(0,0);
+}
+async function deletePayment(id){
+  const p = state.payments.find(x=>x.id===id);
+  if(!p) return;
+  if(!(await customConfirm(`Excluir o pagamento "${p.descricao}"?`))) return;
+  state.payments = state.payments.filter(x=>x.id!==id);
+  renderPayments();
+  showToast('Pagamento excluído.');
+  dbDeletePayment(id);
+}
+function renderPayments(filter){
+  filter = filter!==undefined ? filter : (document.getElementById('pgSearchInput')?.value || '');
+  refreshInvoiceSelect();
+  const wrap = document.getElementById('pgTableWrap');
+  const q = normalize(filter);
+  let list = state.payments.slice();
+  if(q) list = list.filter(p=>[p.descricao,p.forma_pagamento,p.status].some(f=>normalize(f).includes(q)));
+  document.getElementById('pgCount').textContent = `${list.length} pagamento(s)`;
+  if(list.length===0){
+    wrap.innerHTML = `<div class="empty-state"><div class="icon">💳</div><p>Nenhum pagamento cadastrado ainda.</p></div>`;
+    return;
+  }
+  const rows = list.map(p=>{
+    const inv = state.invoices.find(i=>i.id===p.invoice_id);
+    return `<tr>
+      <td>${escapeHtml(p.descricao)}</td>
+      <td class="code">${formatBRL(p.valor||0)}</td>
+      <td class="code">${fmtDate(p.data_pagamento)}</td>
+      <td>${escapeHtml(p.forma_pagamento||'—')}</td>
+      <td><span class="badge ${p.status==='Pago'?'badge-posse':'badge-cat-informatica'}">${escapeHtml(p.status||'Pendente')}</span></td>
+      <td>${inv ? escapeHtml(inv.numero) : '—'}</td>
+      <td class="row-actions">
+        <button class="btn btn-outline btn-sm" onclick="editPayment('${p.id}')">Editar</button>
+        <button class="btn btn-danger btn-sm" onclick="deletePayment('${p.id}')">Excluir</button>
+      </td>
+    </tr>`;
+  }).join('');
+  wrap.innerHTML = `<table>
+    <thead><tr><th>Descrição</th><th>Valor</th><th>Data</th><th>Forma</th><th>Status</th><th>NF vinculada</th><th></th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+// ---------- FINANCEIRO: RESUMO ----------
+let resumoChartInstance = null;
+function renderResumoFinanceiro(){
+  const totalNotas = state.invoices.reduce((s,i)=>s+(Number(i.valor_total)||0),0);
+  const totalPagamentos = state.payments.filter(p=>p.status==='Pago').reduce((s,p)=>s+(Number(p.valor)||0),0);
+  const pedidosPendentes = state.purchaseOrders.filter(o=>o.status==='Pendente'||o.status==='Aprovado').length;
+  const pagamentosPendentes = state.payments.filter(p=>p.status==='Pendente').length;
+  document.getElementById('resumoTotalNotas').textContent = formatBRL(totalNotas);
+  document.getElementById('resumoTotalPagamentos').textContent = formatBRL(totalPagamentos);
+  document.getElementById('resumoPedidosPendentes').textContent = pedidosPendentes;
+  document.getElementById('resumoPagamentosPendentes').textContent = pagamentosPendentes;
+
+  const categorias = [...new Set(state.invoiceItems.map(i=>i.categoria).filter(Boolean))].sort();
+  if(state.resumoCategoriasAtivas === null){
+    state.resumoCategoriasAtivas = new Set(categorias);
+  }
+
+  const filtrosEl = document.getElementById('resumoCategoriaFiltros');
+  if(categorias.length===0){
+    filtrosEl.innerHTML = `<span style="font-size:12.5px;color:var(--ink-faint);">Nenhuma categoria lançada ainda — adicione itens em Notas Fiscais.</span>`;
+  }else{
+    filtrosEl.innerHTML = categorias.map(c=>{
+      const ativo = state.resumoCategoriasAtivas.has(c);
+      return `<button type="button" class="btn ${ativo?'btn-primary':'btn-outline'} btn-sm" onclick="toggleResumoCategoria('${escapeHtml(c).replace(/'/g,"\\'")}')">${escapeHtml(c)}</button>`;
+    }).join('');
+  }
+
+  // agrupar por mes (YYYY-MM) e categoria, usando a data de emissao da nota
+  const porMesCategoria = {};
+  const mesesSet = new Set();
+  state.invoiceItems.forEach(item=>{
+    if(!categorias.includes(item.categoria)) return;
+    if(!state.resumoCategoriasAtivas.has(item.categoria)) return;
+    const inv = state.invoices.find(i=>i.id===item.invoice_id);
+    const data = inv?.data_emissao;
+    if(!data) return;
+    const mes = data.slice(0,7);
+    mesesSet.add(mes);
+    porMesCategoria[item.categoria] = porMesCategoria[item.categoria] || {};
+    porMesCategoria[item.categoria][mes] = (porMesCategoria[item.categoria][mes]||0) + (Number(item.valor)||0);
+  });
+  const meses = [...mesesSet].sort();
+
+  const cores = ['#E8650A','#0369A1','#7C3AED','#059669','#B45309','#DC2626','#0891B2','#65A30D','#DB2777','#4F46E5'];
+  const datasets = categorias.filter(c=>state.resumoCategoriasAtivas.has(c)).map((cat, idx)=>({
+    label: cat,
+    data: meses.map(m => (porMesCategoria[cat] && porMesCategoria[cat][m]) || 0),
+    borderColor: cores[idx % cores.length],
+    backgroundColor: cores[idx % cores.length],
+    tension: 0.3,
+    fill: false
+  }));
+
+  const ctx = document.getElementById('resumoChart');
+  if(typeof Chart === 'undefined' || !ctx) return;
+  if(resumoChartInstance) resumoChartInstance.destroy();
+  resumoChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: { labels: meses.map(m=>{ const [y,mm]=m.split('-'); return `${mm}/${y}`; }), datasets },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'bottom' } },
+      scales: { y: { beginAtZero: true, ticks: { callback: v => formatBRL(v) } } }
+    }
+  });
+}
+function toggleResumoCategoria(cat){
+  if(state.resumoCategoriasAtivas.has(cat)) state.resumoCategoriasAtivas.delete(cat);
+  else state.resumoCategoriasAtivas.add(cat);
+  renderResumoFinanceiro();
+}
+
 // ---------- EMITIR VALE ----------
 function formatBRL(num){
   return 'R$ ' + (num||0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
@@ -3572,7 +4361,11 @@ async function attemptLogin(){
       return;
     }
     state.currentUser = data[0];
-    saveSession(data[0]);
+    try{
+      const { data: fresh } = await sb.from('app_users').select('id,name,email,role,active,fin_acesso').eq('id', data[0].id);
+      if(fresh && fresh[0]) state.currentUser = { ...state.currentUser, ...fresh[0] };
+    }catch(e){}
+    saveSession(state.currentUser);
     await enterApp();
   }catch(e){
     errEl.textContent = 'Erro ao entrar: ' + (e.message||e);
@@ -3596,6 +4389,16 @@ function applyRoleUI(){
   document.getElementById('userNameLabel').textContent = state.currentUser.name;
   document.getElementById('userRoleLabel').textContent = state.currentUser.role === 'desenvolvedor' ? 'Desenvolvedor' : (isAdmin ? 'Administrador' : 'Operador');
   document.getElementById('userAvatar').textContent = (state.currentUser.name||'?').trim().charAt(0).toUpperCase();
+
+  const podePedidos = canAccessFin('pedidos');
+  const podeNotas = canAccessFin('notas');
+  const podePagamentos = canAccessFin('pagamentos');
+  const podeResumo = canAccessFin('resumo');
+  document.getElementById('navFinPedidos').style.display = podePedidos ? 'flex' : 'none';
+  document.getElementById('navFinNotas').style.display = podeNotas ? 'flex' : 'none';
+  document.getElementById('navFinPagamentos').style.display = podePagamentos ? 'flex' : 'none';
+  document.getElementById('navFinResumo').style.display = podeResumo ? 'flex' : 'none';
+  document.getElementById('finSectionLabel').style.display = (podePedidos||podeNotas||podePagamentos||podeResumo) ? 'block' : 'none';
 }
 
 async function enterApp(){
@@ -3663,6 +4466,11 @@ function openUserForm(id){
   document.getElementById('u_password').placeholder = isEdit ? 'Deixe em branco para manter a atual' : 'Mínimo 6 caracteres';
   document.getElementById('u_password_label').textContent = isEdit ? 'Nova senha (opcional)' : 'Senha *';
   document.getElementById('u_role').value = u?.role || 'operador';
+  const finAcesso = u?.fin_acesso || [];
+  document.getElementById('u_fin_pedidos').checked = finAcesso.includes('pedidos');
+  document.getElementById('u_fin_notas').checked = finAcesso.includes('notas');
+  document.getElementById('u_fin_pagamentos').checked = finAcesso.includes('pagamentos');
+  document.getElementById('u_fin_resumo').checked = finAcesso.includes('resumo');
   document.getElementById('modalUser').classList.add('active');
 }
 async function saveUserForm(evt){
@@ -3670,6 +4478,11 @@ async function saveUserForm(evt){
   const email = document.getElementById('u_email').value.trim().toLowerCase();
   const password = document.getElementById('u_password').value;
   const role = document.getElementById('u_role').value;
+  const finAcesso = [];
+  if(document.getElementById('u_fin_pedidos').checked) finAcesso.push('pedidos');
+  if(document.getElementById('u_fin_notas').checked) finAcesso.push('notas');
+  if(document.getElementById('u_fin_pagamentos').checked) finAcesso.push('pagamentos');
+  if(document.getElementById('u_fin_resumo').checked) finAcesso.push('resumo');
 
   if(!name || !email){ showToast('Preencha nome e e-mail.'); return; }
   if(role === 'desenvolvedor' && normalize(email) !== normalize(DEV_PROTECTED_EMAIL)){
@@ -3695,7 +4508,7 @@ async function saveUserForm(evt){
         showToast('Este usuário é protegido pelo sistema e não pode ser editado.');
         return;
       }
-      const payload = { name, role };
+      const payload = { name, role, fin_acesso: finAcesso };
       if(password){
         const { data:hash, error:hashErr } = await sb.rpc('hash_password', { p_password: password });
         if(hashErr) throw hashErr;
@@ -3704,10 +4517,15 @@ async function saveUserForm(evt){
       const { error } = await sb.from('app_users').update(payload).eq('id', state.editingUserId);
       if(error) throw error;
       showToast('Usuário atualizado.');
+      if(state.currentUser && state.currentUser.id === state.editingUserId){
+        state.currentUser.role = role;
+        state.currentUser.fin_acesso = finAcesso;
+        applyRoleUI();
+      }
     }else{
       const { data:hash, error:hashErr } = await sb.rpc('hash_password', { p_password: password });
       if(hashErr) throw hashErr;
-      const { error } = await sb.from('app_users').insert({ name, email, role, password_hash: hash });
+      const { error } = await sb.from('app_users').insert({ name, email, role, password_hash: hash, fin_acesso: finAcesso });
       if(error) throw error;
       showToast('Usuário criado.');
     }
@@ -3750,7 +4568,7 @@ async function init(){
   const session = loadSession();
   if(session && session.id){
     try{
-      const { data, error } = await sb.from('app_users_public').select('*').eq('id', session.id).single();
+      const { data, error } = await sb.from('app_users').select('id,name,email,role,active,fin_acesso').eq('id', session.id).single();
       if(error || !data || !data.active) throw new Error('sessão inválida');
       state.currentUser = data;
       saveSession(data);
