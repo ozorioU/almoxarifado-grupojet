@@ -462,6 +462,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
         <span>Resumo Financeiro</span>
       </div>
+      <div class="nav-item" id="navFinFornecedores" data-view="fin-fornecedores" onclick="switchView('fin-fornecedores')" style="display:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/></svg>
+        <span>Fornecedores</span>
+      </div>
       <div class="nav-section-label" id="adminSectionLabel" style="display:none;">Administração</div>
       <div class="nav-item" id="navUsers" data-view="users" onclick="switchView('users')" style="display:none;">
         <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
@@ -866,66 +870,164 @@
 
       <!-- FINANCEIRO: PEDIDOS DE COMPRA -->
       <div class="view" id="view-fin-pedidos">
+        <!-- LISTA -->
+        <div id="pcListSection">
+          <div class="page-head">
+            <div>
+              <h2>Pedidos de Compra</h2>
+              <p>Acompanhe os pedidos, anexe cotações de fornecedores e aprove a melhor opção.</p>
+            </div>
+            <button class="btn btn-primary" onclick="abrirNovoPedidoForm()">+ Novo pedido de compra</button>
+          </div>
+          <div class="search-row">
+            <input type="text" id="pcSearchInput" placeholder="Buscar por número, solicitante ou destinação..." oninput="renderPurchaseOrders(this.value)">
+          </div>
+          <div class="card" style="padding:0;overflow-x:auto;">
+            <div id="pcTableWrap"></div>
+          </div>
+        </div>
+
+        <!-- FORMULARIO: novo pedido -->
+        <div id="pcFormSection" style="display:none;">
+          <button class="btn btn-outline btn-sm" style="margin-bottom:16px;" onclick="fecharPedidoForm()">← Voltar para a lista</button>
+          <div class="card">
+            <div class="card-head">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+              <h3>Novo pedido de compra</h3>
+            </div>
+            <div class="card-body" style="padding-top:16px;">
+              <div class="form-grid">
+                <div class="form-field">
+                  <label>Data do pedido</label>
+                  <input type="date" id="pc_data">
+                </div>
+                <div class="form-field">
+                  <label>Solicitante</label>
+                  <input type="text" id="pc_solicitante" placeholder="Nome de quem está solicitando">
+                </div>
+                <div class="form-field full">
+                  <label>Destinação da compra</label>
+                  <select id="pc_destinacao">
+                    <option>Manutenção</option>
+                    <option>Implantação</option>
+                    <option>Reposição</option>
+                    <option>Novas Aquisições</option>
+                    <option>Outros</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="section-title" style="margin-top:6px;">
+                <h3 style="font-size:13.5px;">Itens do pedido</h3>
+              </div>
+              <div id="pcItemsList" style="margin-bottom:10px;"></div>
+              <div style="display:grid;grid-template-columns:2fr 110px auto;gap:8px;align-items:end;position:relative;">
+                <div class="form-field" style="margin-bottom:0;position:relative;">
+                  <label>Buscar item já cadastrado — nome ou código</label>
+                  <input type="text" id="pc_item_search" placeholder="Digite para buscar..." oninput="filterPcItemSearch()" autocomplete="off">
+                  <div id="pc_item_search_results" style="display:none;position:fixed;z-index:500;background:#fff;border:1px solid var(--border);border-radius:8px;max-height:260px;overflow-y:auto;box-shadow:0 10px 30px rgba(0,0,0,0.12);"></div>
+                </div>
+                <div class="form-field" style="margin-bottom:0;">
+                  <label>Quantidade</label>
+                  <input type="number" id="pc_item_qtd" value="1" min="1">
+                </div>
+                <button type="button" class="btn btn-outline" onclick="abrirCadastroRapidoItem()">+ Item novo</button>
+              </div>
+              <div id="pc_item_selected_hint" style="font-size:12px;color:var(--ink-faint);margin-top:6px;"></div>
+
+              <div class="modal-actions" style="justify-content:flex-start;margin-top:20px;">
+                <button type="button" class="btn btn-primary" onclick="salvarPedidoCompra()">📤 Enviar pedido</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- DETALHE: ver pedido, cotacoes e aprovacao -->
+        <div id="pcDetailSection" style="display:none;">
+          <button class="btn btn-outline btn-sm" style="margin-bottom:16px;" onclick="fecharPedidoDetail()">← Voltar para a lista</button>
+          <div id="pcDetailContent"></div>
+        </div>
+      </div>
+
+      <!-- FINANCEIRO: FORNECEDORES -->
+      <div class="view" id="view-fin-fornecedores">
         <div class="page-head">
           <div>
-            <h2>Pedidos de Compra</h2>
-            <p>Registre os pedidos feitos a fornecedores e acompanhe o status de cada um.</p>
+            <h2>Fornecedores</h2>
+            <p>Cadastro de fornecedores usados nas cotações de pedidos de compra.</p>
           </div>
         </div>
         <div class="card">
           <div class="card-head">
-            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-            <h3 id="pedidoFormTitle">Novo pedido de compra</h3>
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/></svg>
+            <h3 id="supplierFormTitle">Novo fornecedor</h3>
           </div>
           <div class="card-body" style="padding-top:16px;">
             <div class="form-grid">
               <div class="form-field">
-                <label>Número do pedido *</label>
-                <input type="text" id="pc_numero" placeholder="Ex.: PC-0001">
+                <label>Nome da empresa *</label>
+                <input type="text" id="sup_nome">
               </div>
               <div class="form-field">
-                <label>Fornecedor</label>
-                <input type="text" id="pc_fornecedor" list="fornecedoresList">
+                <label>CNPJ</label>
+                <input type="text" id="sup_cnpj" placeholder="00.000.000/0000-00">
               </div>
               <div class="form-field">
-                <label>Data do pedido</label>
-                <input type="date" id="pc_data">
+                <label>Nome do vendedor</label>
+                <input type="text" id="sup_vendedor">
               </div>
               <div class="form-field">
-                <label>Valor total (R$)</label>
-                <input type="text" id="pc_valor" placeholder="0,00">
+                <label>Contato</label>
+                <input type="text" id="sup_contato" placeholder="Telefone ou e-mail">
               </div>
               <div class="form-field">
-                <label>Status</label>
-                <select id="pc_status">
-                  <option>Pendente</option>
-                  <option>Aprovado</option>
-                  <option>Recebido</option>
-                  <option>Cancelado</option>
-                </select>
+                <label>Localidade</label>
+                <input type="text" id="sup_localidade">
               </div>
-              <div class="form-field full">
-                <label>Observações</label>
-                <textarea id="pc_obs" rows="2"></textarea>
+              <div class="form-field">
+                <label>Método de pagamento aceito</label>
+                <input type="text" id="sup_pagamento" placeholder="Ex.: Boleto 30 dias, Pix">
               </div>
             </div>
             <div class="modal-actions" style="justify-content:flex-start;margin-top:18px;">
-              <button type="button" class="btn btn-primary" id="pcSubmitBtn" onclick="savePurchaseOrder(event)">Cadastrar pedido</button>
-              <button type="button" class="btn btn-outline" id="pcCancelBtn" style="display:none;" onclick="resetPurchaseOrderForm()">Cancelar edição</button>
+              <button type="button" class="btn btn-primary" id="supSubmitBtn" onclick="saveSupplier(event)">Cadastrar fornecedor</button>
+              <button type="button" class="btn btn-outline" id="supCancelBtn" style="display:none;" onclick="resetSupplierForm()">Cancelar edição</button>
             </div>
           </div>
         </div>
         <div class="section-title">
-          <h3>Pedidos cadastrados</h3>
-          <span class="count" id="pcCount"></span>
+          <h3>Fornecedores cadastrados</h3>
+          <span class="count" id="supCount"></span>
         </div>
         <div class="search-row">
-          <input type="text" id="pcSearchInput" placeholder="Buscar por número, fornecedor ou status..." oninput="renderPurchaseOrders(this.value)">
+          <input type="text" id="supSearchInput" placeholder="Buscar por nome, CNPJ ou localidade..." oninput="renderSuppliers(this.value)">
         </div>
         <div class="card" style="padding:0;overflow-x:auto;">
-          <div id="pcTableWrap"></div>
+          <div id="supTableWrap"></div>
         </div>
       </div>
+
+      <!-- MODAL: cadastro rapido de item -->
+      <div class="modal-overlay" id="modalQuickItem">
+        <div class="modal" style="max-width:420px;">
+          <h3>Cadastrar item novo</h3>
+          <div class="form-grid">
+            <div class="form-field">
+              <label>Código</label>
+              <input type="text" id="qi_codigo">
+            </div>
+            <div class="form-field full">
+              <label>Descrição *</label>
+              <input type="text" id="qi_descricao">
+            </div>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-outline" onclick="closeModal('modalQuickItem')">Cancelar</button>
+            <button type="button" class="btn btn-primary" onclick="confirmarCadastroRapidoItem()">Cadastrar e adicionar ao pedido</button>
+          </div>
+        </div>
+      </div>
+
 
       <!-- FINANCEIRO: NOTAS FISCAIS -->
       <div class="view" id="view-fin-notas">
@@ -1375,6 +1477,9 @@
           <label style="display:flex;align-items:center;gap:6px;font-weight:500;font-size:13px;">
             <input type="checkbox" id="u_fin_resumo" style="width:auto;"> Resumo Financeiro
           </label>
+          <label style="display:flex;align-items:center;gap:6px;font-weight:500;font-size:13px;">
+            <input type="checkbox" id="u_fin_fornecedores" style="width:auto;"> Fornecedores
+          </label>
         </div>
       </div>
     </div>
@@ -1457,7 +1562,15 @@ let state = {
   editingInvoiceId: null,
   editingPaymentId: null,
   nfDraftItems: [],
-  resumoCategoriasAtivas: null
+  resumoCategoriasAtivas: null,
+  purchaseOrderItems: [],
+  purchaseItemsCatalog: [],
+  suppliers: [],
+  purchaseOrderQuotes: [],
+  pcDraftItems: [],
+  pcSelectedCatalogId: null,
+  currentPedidoDetailId: null,
+  editingSupplierId: null
 };
 
 const ICONS = {
@@ -1546,6 +1659,26 @@ async function loadAll(){
     if(error) throw error;
     state.purchaseOrders = data || [];
   }catch(e){ state.purchaseOrders = state.purchaseOrders || []; }
+  try{
+    const { data, error } = await sb.from('purchase_order_items').select('*');
+    if(error) throw error;
+    state.purchaseOrderItems = data || [];
+  }catch(e){ state.purchaseOrderItems = state.purchaseOrderItems || []; }
+  try{
+    const { data, error } = await sb.from('purchase_items_catalog').select('*').order('descricao');
+    if(error) throw error;
+    state.purchaseItemsCatalog = data || [];
+  }catch(e){ state.purchaseItemsCatalog = state.purchaseItemsCatalog || []; }
+  try{
+    const { data, error } = await sb.from('suppliers').select('*').order('nome');
+    if(error) throw error;
+    state.suppliers = data || [];
+  }catch(e){ state.suppliers = state.suppliers || []; }
+  try{
+    const { data, error } = await sb.from('purchase_order_quotes').select('*');
+    if(error) throw error;
+    state.purchaseOrderQuotes = data || [];
+  }catch(e){ state.purchaseOrderQuotes = state.purchaseOrderQuotes || []; }
   try{
     const { data, error } = await sb.from('invoices').select('*').order('created_at', { ascending:false });
     if(error) throw error;
@@ -1756,8 +1889,8 @@ function showToast(msg){
   setTimeout(()=>t.classList.remove('show'), 2200);
 }
 
-const PAGE_TITLES = { home:'Início', employees:'Colaboradores', ficha:'Ficha do colaborador', stock:'Cadastrar itens', items:'Buscar item', users:'Usuários', vale:'Emitir vale', chip:'Controle de Chip', 'fin-pedidos':'Pedidos de Compra', 'fin-notas':'Notas Fiscais', 'fin-pagamentos':'Pagamentos', 'fin-resumo':'Resumo Financeiro' };
-const FIN_VIEW_TO_TAB = { 'fin-pedidos':'pedidos', 'fin-notas':'notas', 'fin-pagamentos':'pagamentos', 'fin-resumo':'resumo' };
+const PAGE_TITLES = { home:'Início', employees:'Colaboradores', ficha:'Ficha do colaborador', stock:'Cadastrar itens', items:'Buscar item', users:'Usuários', vale:'Emitir vale', chip:'Controle de Chip', 'fin-pedidos':'Pedidos de Compra', 'fin-notas':'Notas Fiscais', 'fin-pagamentos':'Pagamentos', 'fin-resumo':'Resumo Financeiro', 'fin-fornecedores':'Fornecedores' };
+const FIN_VIEW_TO_TAB = { 'fin-pedidos':'pedidos', 'fin-notas':'notas', 'fin-pagamentos':'pagamentos', 'fin-resumo':'resumo', 'fin-fornecedores':'fornecedores' };
 function canAccessFin(tabKey){
   if(!state.currentUser) return false;
   if(state.currentUser.role === 'desenvolvedor') return true;
@@ -1789,10 +1922,11 @@ async function switchView(name){
   if(name==='stock'){ updateStockCategoryFields(); renderStockTable(); renderEpiCatalogTable(); renderFerramentalCatalogTable(); }
   if(name==='items') renderItemsSearch();
   if(name==='chip') renderChipTable();
-  if(name==='fin-pedidos') renderPurchaseOrders();
   if(name==='fin-notas') renderInvoices();
   if(name==='fin-pagamentos') renderPayments();
+  if(name==='fin-pedidos'){ fecharPedidoForm(true); fecharPedidoDetail(true); renderPurchaseOrders(); }
   if(name==='fin-resumo') renderResumoFinanceiro();
+  if(name==='fin-fornecedores') renderSuppliers();
   if(name==='vale'){ if(state.valeEmployeeId) renderValeItemsChecklist(); }
 }
 
@@ -3330,6 +3464,23 @@ function resolveConfirm(val){
 }
 
 // ---------- FINANCEIRO: PEDIDOS DE COMPRA ----------
+function proximoNumeroPedido(){
+  const nums = state.purchaseOrders.map(o=>{
+    const m = (o.numero||'').match(/PC-(\d+)/);
+    return m ? parseInt(m[1],10) : 0;
+  });
+  const max = nums.length ? Math.max(...nums) : 0;
+  return 'PC-' + String(max+1).padStart(4,'0');
+}
+function proximoCodigoItem(){
+  const nums = state.purchaseItemsCatalog.map(i=>{
+    const m = (i.codigo||'').match(/^ITEM(\d+)$/i);
+    return m ? parseInt(m[1],10) : 0;
+  });
+  const max = nums.length ? Math.max(...nums) : 0;
+  return 'ITEM' + String(max+1).padStart(4,'0');
+}
+
 async function dbInsertPurchaseOrder(o){
   const { error } = await sb.from('purchase_orders').insert(o);
   if(error) showToast('Erro ao salvar pedido: ' + error.message);
@@ -3342,100 +3493,565 @@ async function dbDeletePurchaseOrder(id){
   const { error } = await sb.from('purchase_orders').delete().eq('id', id);
   if(error) showToast('Erro ao excluir pedido: ' + error.message);
 }
-function resetPurchaseOrderForm(){
-  state.editingPurchaseOrderId = null;
-  document.getElementById('pedidoFormTitle').textContent = 'Novo pedido de compra';
-  document.getElementById('pc_numero').value = '';
-  document.getElementById('pc_fornecedor').value = '';
-  document.getElementById('pc_data').value = '';
-  document.getElementById('pc_valor').value = '';
-  document.getElementById('pc_status').value = 'Pendente';
-  document.getElementById('pc_obs').value = '';
-  document.getElementById('pcSubmitBtn').textContent = 'Cadastrar pedido';
-  document.getElementById('pcCancelBtn').style.display = 'none';
+async function dbInsertPurchaseOrderItems(items){
+  if(!items.length) return;
+  const { error } = await sb.from('purchase_order_items').insert(items);
+  if(error) showToast('Erro ao salvar itens do pedido: ' + error.message);
 }
-async function savePurchaseOrder(evt){
-  evt.preventDefault();
-  const numero = document.getElementById('pc_numero').value.trim();
-  if(!numero){ showToast('Preencha o número do pedido.'); return; }
-  const data = {
-    numero,
-    fornecedor: document.getElementById('pc_fornecedor').value.trim() || null,
-    data_pedido: document.getElementById('pc_data').value || null,
-    valor_total: parseBRL(document.getElementById('pc_valor').value),
-    status: document.getElementById('pc_status').value,
-    obs: document.getElementById('pc_obs').value.trim() || null
-  };
-  if(state.editingPurchaseOrderId){
-    data.id = state.editingPurchaseOrderId;
-    const idx = state.purchaseOrders.findIndex(o=>o.id===data.id);
-    if(idx>-1) state.purchaseOrders[idx] = { ...state.purchaseOrders[idx], ...data };
-    dbUpdatePurchaseOrder(data);
-    showToast('Pedido atualizado.');
-  }else{
-    data.id = uid();
-    state.purchaseOrders.unshift(data);
-    dbInsertPurchaseOrder(data);
-    showToast('Pedido cadastrado.');
-  }
-  refreshFornecedoresList();
-  resetPurchaseOrderForm();
-  renderPurchaseOrders();
+async function dbInsertPurchaseItemCatalog(entry){
+  const { error } = await sb.from('purchase_items_catalog').insert(entry);
+  if(error) showToast('Erro ao salvar item no catálogo: ' + error.message);
 }
-function editPurchaseOrder(id){
-  const o = state.purchaseOrders.find(x=>x.id===id);
-  if(!o) return;
-  state.editingPurchaseOrderId = id;
-  document.getElementById('pedidoFormTitle').textContent = 'Editar pedido de compra';
-  document.getElementById('pc_numero').value = o.numero || '';
-  document.getElementById('pc_fornecedor').value = o.fornecedor || '';
-  document.getElementById('pc_data').value = o.data_pedido || '';
-  document.getElementById('pc_valor').value = o.valor_total != null ? String(o.valor_total).replace('.',',') : '';
-  document.getElementById('pc_status').value = o.status || 'Pendente';
-  document.getElementById('pc_obs').value = o.obs || '';
-  document.getElementById('pcSubmitBtn').textContent = 'Salvar alterações';
-  document.getElementById('pcCancelBtn').style.display = 'inline-flex';
+async function dbInsertPurchaseOrderQuote(q){
+  const { error } = await sb.from('purchase_order_quotes').insert(q);
+  if(error) showToast('Erro ao salvar cotação: ' + error.message);
+}
+async function dbDeletePurchaseOrderQuote(id){
+  const { error } = await sb.from('purchase_order_quotes').delete().eq('id', id);
+  if(error) showToast('Erro ao excluir cotação: ' + error.message);
+}
+
+// --- fluxo de telas: lista / formulario / detalhe ---
+function abrirNovoPedidoForm(){
+  state.pcDraftItems = [];
+  state.pcSelectedCatalogId = null;
+  document.getElementById('pcListSection').style.display = 'none';
+  document.getElementById('pcDetailSection').style.display = 'none';
+  document.getElementById('pcFormSection').style.display = 'block';
+  document.getElementById('pc_data').value = todayStr();
+  document.getElementById('pc_solicitante').value = '';
+  document.getElementById('pc_destinacao').value = 'Manutenção';
+  document.getElementById('pc_item_search').value = '';
+  document.getElementById('pc_item_qtd').value = 1;
+  renderPcItemsList();
   window.scrollTo(0,0);
+}
+function fecharPedidoForm(silent){
+  document.getElementById('pcFormSection').style.display = 'none';
+  document.getElementById('pcDetailSection').style.display = 'none';
+  document.getElementById('pcListSection').style.display = 'block';
+  if(!silent) renderPurchaseOrders();
+}
+function abrirPedidoDetail(id){
+  state.currentPedidoDetailId = id;
+  document.getElementById('pcListSection').style.display = 'none';
+  document.getElementById('pcFormSection').style.display = 'none';
+  document.getElementById('pcDetailSection').style.display = 'block';
+  renderPedidoDetail(id);
+  window.scrollTo(0,0);
+}
+function fecharPedidoDetail(silent){
+  document.getElementById('pcDetailSection').style.display = 'none';
+  document.getElementById('pcFormSection').style.display = 'none';
+  document.getElementById('pcListSection').style.display = 'block';
+  if(!silent) renderPurchaseOrders();
+}
+
+// --- busca de itens no catalogo de compras ---
+function filterPcItemSearch(){
+  const inputEl = document.getElementById('pc_item_search');
+  const q = normalize(inputEl.value);
+  const resultsEl = document.getElementById('pc_item_search_results');
+  if(!q){ resultsEl.style.display = 'none'; resultsEl.innerHTML = ''; return; }
+  positionDropdown(inputEl, resultsEl);
+  const matches = state.purchaseItemsCatalog.filter(i => normalize(i.codigo).includes(q) || normalize(i.descricao).includes(q)).slice(0,8);
+  if(matches.length===0){
+    resultsEl.innerHTML = `<div style="padding:10px 12px;font-size:12.5px;color:var(--ink-faint);">Nenhum item encontrado. Use "+ Item novo" para cadastrar.</div>`;
+  }else{
+    resultsEl.innerHTML = matches.map(i=>`
+      <div style="padding:9px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--border);" onclick="selecionarItemPedido('${i.id}')" onmouseover="this.style.background='#FAFAFA'" onmouseout="this.style.background='#fff'">
+        <span class="code" style="font-weight:700;">${escapeHtml(i.codigo)}</span> — ${escapeHtml(i.descricao)}
+      </div>`).join('');
+  }
+  resultsEl.style.display = 'block';
+}
+function selecionarItemPedido(catalogId){
+  const entry = state.purchaseItemsCatalog.find(i=>i.id===catalogId);
+  if(!entry) return;
+  const qtd = parseFloat(document.getElementById('pc_item_qtd').value) || 1;
+  if(state.pcDraftItems.some(it=>normalize(it.codigo)===normalize(entry.codigo))){
+    showToast('Esse item já está na lista.');
+  }else{
+    state.pcDraftItems.push({ id: uid(), codigo: entry.codigo, descricao: entry.descricao, quantidade: qtd });
+    renderPcItemsList();
+  }
+  document.getElementById('pc_item_search').value = '';
+  document.getElementById('pc_item_search_results').style.display = 'none';
+  document.getElementById('pc_item_qtd').value = 1;
+}
+function removerItemPedido(itemId){
+  state.pcDraftItems = state.pcDraftItems.filter(i=>i.id!==itemId);
+  renderPcItemsList();
+}
+function renderPcItemsList(){
+  const wrap = document.getElementById('pcItemsList');
+  if(state.pcDraftItems.length===0){
+    wrap.innerHTML = `<div style="font-size:12.5px;color:var(--ink-faint);padding:8px 0;">Nenhum item adicionado ainda.</div>`;
+    return;
+  }
+  wrap.innerHTML = state.pcDraftItems.map(it=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
+      <div style="flex:1;"><span class="code">${escapeHtml(it.codigo)}</span> — ${escapeHtml(it.descricao)}</div>
+      <div class="code">Qtd: ${it.quantidade}</div>
+      <button class="btn btn-danger btn-sm" onclick="removerItemPedido('${it.id}')">Remover</button>
+    </div>`).join('');
+}
+
+// --- cadastro rapido de item novo ---
+function abrirCadastroRapidoItem(){
+  document.getElementById('qi_codigo').value = proximoCodigoItem();
+  document.getElementById('qi_descricao').value = document.getElementById('pc_item_search').value || '';
+  document.getElementById('modalQuickItem').classList.add('active');
+}
+async function confirmarCadastroRapidoItem(){
+  const codigo = document.getElementById('qi_codigo').value.trim();
+  const descricao = document.getElementById('qi_descricao').value.trim();
+  if(!codigo || !descricao){ showToast('Preencha código e descrição.'); return; }
+  if(state.purchaseItemsCatalog.some(i=>normalize(i.codigo)===normalize(codigo))){
+    showToast(`Já existe um item com o código "${codigo}".`);
+    return;
+  }
+  const entry = { id: uid(), codigo, descricao };
+  state.purchaseItemsCatalog.push(entry);
+  dbInsertPurchaseItemCatalog(entry);
+  const qtd = parseFloat(document.getElementById('pc_item_qtd').value) || 1;
+  state.pcDraftItems.push({ id: uid(), codigo, descricao, quantidade: qtd });
+  renderPcItemsList();
+  closeModal('modalQuickItem');
+  showToast('Item cadastrado e adicionado ao pedido.');
+}
+
+// --- salvar novo pedido ---
+async function salvarPedidoCompra(){
+  const solicitante = document.getElementById('pc_solicitante').value.trim();
+  if(!solicitante){ showToast('Preencha o nome do solicitante.'); return; }
+  if(state.pcDraftItems.length===0){ showToast('Adicione ao menos um item ao pedido.'); return; }
+  const id = uid();
+  const po = {
+    id,
+    numero: proximoNumeroPedido(),
+    data_pedido: document.getElementById('pc_data').value || todayStr(),
+    solicitante,
+    destinacao: document.getElementById('pc_destinacao').value,
+    valor_total: null,
+    status: 'Pendente',
+    etapa: 'cotacao',
+    fornecedor: null,
+    obs: null
+  };
+  const items = state.pcDraftItems.map(it => ({ id: it.id, purchase_order_id: id, codigo: it.codigo, descricao: it.descricao, quantidade: it.quantidade }));
+  state.purchaseOrders.unshift(po);
+  state.purchaseOrderItems.push(...items);
+  dbInsertPurchaseOrder(po);
+  dbInsertPurchaseOrderItems(items);
+  showToast('Pedido de compra enviado.');
+  fecharPedidoForm();
 }
 async function deletePurchaseOrder(id){
   const o = state.purchaseOrders.find(x=>x.id===id);
   if(!o) return;
-  if(!(await customConfirm(`Excluir o pedido "${o.numero}"?`))) return;
+  if(!(await customConfirm(`Excluir o pedido "${o.numero}"? Isso remove também os itens e cotações.`))) return;
   state.purchaseOrders = state.purchaseOrders.filter(x=>x.id!==id);
+  state.purchaseOrderItems = state.purchaseOrderItems.filter(i=>i.purchase_order_id!==id);
+  state.purchaseOrderQuotes = state.purchaseOrderQuotes.filter(q=>q.purchase_order_id!==id);
   renderPurchaseOrders();
   showToast('Pedido excluído.');
   dbDeletePurchaseOrder(id);
 }
+
+// --- lista de pedidos ---
 function renderPurchaseOrders(filter){
   filter = filter!==undefined ? filter : (document.getElementById('pcSearchInput')?.value || '');
   const wrap = document.getElementById('pcTableWrap');
   const q = normalize(filter);
   let list = state.purchaseOrders.slice();
-  if(q) list = list.filter(o=>[o.numero,o.fornecedor,o.status].some(f=>normalize(f).includes(q)));
-  document.getElementById('pcCount').textContent = `${list.length} pedido(s)`;
+  if(q) list = list.filter(o=>[o.numero,o.solicitante,o.destinacao].some(f=>normalize(f).includes(q)));
   if(list.length===0){
     wrap.innerHTML = `<div class="empty-state"><div class="icon">📦</div><p>Nenhum pedido de compra cadastrado ainda.</p></div>`;
     return;
   }
-  const statusBadge = s => s==='Recebido' ? 'badge-posse' : (s==='Cancelado' ? 'badge-devolvido' : (s==='Aprovado' ? 'badge-estoque' : 'badge-cat-informatica'));
-  const rows = list.map(o=>`
-    <tr>
+  const etapaBadge = e => e==='aprovado' ? 'badge-posse' : (e==='aprovacao' ? 'badge-estoque' : 'badge-cat-informatica');
+  const etapaLabel = e => e==='aprovado' ? 'Aprovado' : (e==='aprovacao' ? 'Aguardando aprovação' : 'Aguardando cotações');
+  const rows = list.map(o=>{
+    const qtdItens = state.purchaseOrderItems.filter(i=>i.purchase_order_id===o.id).length;
+    return `<tr>
       <td class="code">${escapeHtml(o.numero)}</td>
-      <td>${escapeHtml(o.fornecedor||'—')}</td>
       <td class="code">${fmtDate(o.data_pedido)}</td>
-      <td class="code">${formatBRL(o.valor_total||0)}</td>
-      <td><span class="badge ${statusBadge(o.status)}">${escapeHtml(o.status||'Pendente')}</span></td>
+      <td>${escapeHtml(o.solicitante||'—')}</td>
+      <td>${escapeHtml(o.destinacao||'—')}</td>
+      <td><em>${qtdItens} item(ns)</em></td>
+      <td class="code">${o.valor_total!=null ? formatBRL(o.valor_total) : '—'}</td>
+      <td><span class="badge ${etapaBadge(o.etapa)}">${etapaLabel(o.etapa)}</span></td>
       <td class="row-actions">
-        <button class="btn btn-outline btn-sm" onclick="editPurchaseOrder('${o.id}')">Editar</button>
+        <button class="btn btn-primary btn-sm" onclick="abrirPedidoDetail('${o.id}')">Ver</button>
+        <button class="btn btn-outline btn-sm" onclick="imprimirPedidoCompra('${o.id}')">Imprimir</button>
         <button class="btn btn-danger btn-sm" onclick="deletePurchaseOrder('${o.id}')">Excluir</button>
       </td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
   wrap.innerHTML = `<table>
-    <thead><tr><th>Número</th><th>Fornecedor</th><th>Data</th><th>Valor</th><th>Status</th><th></th></tr></thead>
+    <thead><tr><th>Número</th><th>Data</th><th>Solicitante</th><th>Destinação</th><th>Itens</th><th>Valor</th><th>Etapa</th><th></th></tr></thead>
     <tbody>${rows}</tbody>
   </table>`;
 }
 
+// --- detalhe do pedido: itens, cotacoes, aprovacao ---
+function renderPedidoDetail(id){
+  const o = state.purchaseOrders.find(x=>x.id===id);
+  const content = document.getElementById('pcDetailContent');
+  if(!o){ content.innerHTML = '<p>Pedido não encontrado.</p>'; return; }
+  const items = state.purchaseOrderItems.filter(i=>i.purchase_order_id===id);
+  const quotes = state.purchaseOrderQuotes.filter(q=>q.purchase_order_id===id);
+
+  let html = `
+    <div class="card">
+      <div class="card-body" style="padding-top:16px;">
+        <div class="form-grid">
+          <div class="info-field"><label>Número</label><div class="mono">${escapeHtml(o.numero)}</div></div>
+          <div class="info-field"><label>Data</label><div class="mono">${fmtDate(o.data_pedido)}</div></div>
+          <div class="info-field"><label>Solicitante</label><div>${escapeHtml(o.solicitante||'—')}</div></div>
+          <div class="info-field"><label>Destinação</label><div>${escapeHtml(o.destinacao||'—')}</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="section-title"><h3>Itens do pedido</h3></div>
+    <div class="card" style="padding:0;overflow-x:auto;">
+      <table><thead><tr><th>Código</th><th>Descrição</th><th>Quantidade</th></tr></thead>
+      <tbody>${items.map(it=>`<tr><td class="code">${escapeHtml(it.codigo||'—')}</td><td>${escapeHtml(it.descricao)}</td><td class="code">${it.quantidade}</td></tr>`).join('')}</tbody></table>
+    </div>`;
+
+  if(o.etapa==='aprovado'){
+    const quote = quotes.find(q=>q.id===o.aprovado_quote_id);
+    const supplier = quote ? state.suppliers.find(s=>s.id===quote.supplier_id) : null;
+    html += `
+    <div class="highlight-banner" style="margin-top:18px;">
+      <div><div class="hb-label">Fornecedor aprovado</div><div class="hb-sub">${supplier ? escapeHtml(supplier.nome) : '—'}${quote?.prazo_entrega ? ' · prazo '+escapeHtml(quote.prazo_entrega) : ''}</div></div>
+      <div class="hb-value">${formatBRL(o.valor_total||0)}</div>
+    </div>`;
+  }
+
+  html += `
+    <div class="section-title" style="margin-top:22px;">
+      <h3>Cotações de fornecedores</h3>
+      <span class="count">${quotes.length}/5</span>
+    </div>`;
+
+  if(quotes.length < 5 && o.etapa !== 'aprovado'){
+    if(state.suppliers.length===0){
+      html += `<div class="empty-state"><p>Nenhum fornecedor cadastrado ainda. <a onclick="switchView('fin-fornecedores')" style="cursor:pointer;color:var(--blue);">Cadastre um fornecedor</a> antes de anexar uma cotação.</p></div>`;
+    }else{
+      html += `
+      <div class="card">
+        <div class="card-body" style="padding-top:16px;">
+          <div class="form-grid">
+            <div class="form-field">
+              <label>Fornecedor</label>
+              <select id="cot_fornecedor">
+                <option value="">Selecione...</option>
+                ${state.suppliers.map(s=>`<option value="${s.id}">${escapeHtml(s.nome)}</option>`).join('')}
+              </select>
+            </div>
+            <div class="form-field">
+              <label>Prazo de entrega</label>
+              <input type="text" id="cot_prazo" placeholder="Ex.: 5 dias úteis">
+            </div>
+          </div>
+          <table style="width:100%;">
+            <thead><tr><th style="text-align:left;">Item</th><th>Qtd.</th><th>Valor unitário (R$)</th></tr></thead>
+            <tbody>
+              ${items.map(it=>`<tr>
+                <td>${escapeHtml(it.descricao)}</td>
+                <td class="code" style="text-align:center;">${it.quantidade}</td>
+                <td><input type="text" class="cot-item-valor" data-item-id="${it.id}" placeholder="0,00" style="max-width:140px;"></td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+          <div class="modal-actions" style="justify-content:flex-start;margin-top:14px;">
+            <button class="btn btn-primary" onclick="salvarCotacao('${id}')">+ Adicionar cotação</button>
+          </div>
+        </div>
+      </div>`;
+    }
+  }
+
+  if(quotes.length > 0){
+    html += renderComparativoCotacoes(o, items, quotes);
+  }
+
+  content.innerHTML = html;
+}
+function renderComparativoCotacoes(o, items, quotes){
+  const supplierName = q => { const s = state.suppliers.find(x=>x.id===q.supplier_id); return s ? s.nome : '—'; };
+  const valorItem = (quote, itemId) => {
+    const entry = (quote.itens||[]).find(x=>x.purchase_order_item_id===itemId);
+    return entry ? Number(entry.valor_unitario)||0 : 0;
+  };
+
+  const rows = items.map(it=>{
+    const valores = quotes.map(q=>({ valor: valorItem(q, it.id) * it.quantidade }));
+    const validos = valores.filter(v=>v.valor>0);
+    const menor = validos.length ? Math.min(...validos.map(v=>v.valor)) : 0;
+    const cells = valores.map(v=>{
+      if(v.valor<=0) return `<td class="code" style="text-align:center;color:var(--ink-faint);">—</td>`;
+      const isMenor = v.valor === menor;
+      const diffPct = menor>0 ? ((v.valor-menor)/menor*100) : 0;
+      return `<td class="code" style="text-align:center;${isMenor?'background:#DCFCE7;font-weight:700;':''}">
+        ${formatBRL(v.valor)}
+        ${!isMenor && menor>0 ? `<div style="font-size:10.5px;color:var(--red);">+${diffPct.toFixed(1)}%</div>` : ''}
+      </td>`;
+    }).join('');
+    return `<tr><td>${escapeHtml(it.descricao)}</td>${cells}</tr>`;
+  }).join('');
+
+  const totais = quotes.map(q => items.reduce((s,it)=>s + valorItem(q,it.id)*it.quantidade, 0));
+  const totaisValidos = totais.filter(t=>t>0);
+  const menorTotal = totaisValidos.length ? Math.min(...totaisValidos) : 0;
+  const totalCells = totais.map(t=>{
+    if(t<=0) return `<td class="code" style="text-align:center;">—</td>`;
+    const isMenor = t === menorTotal;
+    const diffPct = menorTotal>0 ? ((t-menorTotal)/menorTotal*100) : 0;
+    const diffReais = t - menorTotal;
+    return `<td class="code" style="text-align:center;font-weight:800;${isMenor?'background:#DCFCE7;':''}">
+      ${formatBRL(t)}
+      ${!isMenor && menorTotal>0 ? `<div style="font-size:10.5px;color:var(--red);">+${formatBRL(diffReais)} (${diffPct.toFixed(1)}%)</div>` : ''}
+    </td>`;
+  }).join('');
+
+  const actionCells = quotes.map(q=>{
+    const approved = q.id === o.aprovado_quote_id;
+    if(approved) return `<td style="text-align:center;"><span class="badge badge-posse">✓ Aprovado</span></td>`;
+    const podeAprovar = o.etapa !== 'aprovado';
+    return `<td style="text-align:center;">
+      ${podeAprovar ? `<button class="btn btn-primary btn-sm" onclick="aprovarCotacao('${q.id}')">Aprovar</button>` : ''}
+      <button class="btn btn-danger btn-sm" onclick="excluirCotacao('${q.id}')" style="margin-top:4px;">Excluir</button>
+    </td>`;
+  }).join('');
+
+  return `
+  <div class="card" style="padding:0;overflow-x:auto;">
+    <table style="width:100%;">
+      <thead>
+        <tr>
+          <th style="text-align:left;">Item</th>
+          ${quotes.map(q=>`<th>${escapeHtml(supplierName(q))}<div style="font-size:10.5px;font-weight:400;color:var(--ink-soft);">${q.prazo_entrega?escapeHtml(q.prazo_entrega):''}</div></th>`).join('')}
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+      <tfoot>
+        <tr style="border-top:2px solid var(--border);">
+          <td style="font-weight:800;">TOTAL</td>
+          ${totalCells}
+        </tr>
+        <tr>
+          <td></td>
+          ${actionCells}
+        </tr>
+      </tfoot>
+    </table>
+  </div>`;
+}
+async function salvarCotacao(pedidoId){
+  const supplierId = document.getElementById('cot_fornecedor').value;
+  const prazo = document.getElementById('cot_prazo').value.trim();
+  if(!supplierId){ showToast('Selecione um fornecedor.'); return; }
+  const valorInputs = [...document.querySelectorAll('.cot-item-valor')];
+  const itens = valorInputs.map(inp => ({ purchase_order_item_id: inp.dataset.itemId, valor_unitario: parseBRL(inp.value) })).filter(x=>x.valor_unitario>0);
+  if(itens.length===0){ showToast('Informe ao menos um valor de item.'); return; }
+  const quote = { id: uid(), purchase_order_id: pedidoId, supplier_id: supplierId, prazo_entrega: prazo || null, itens };
+  state.purchaseOrderQuotes.push(quote);
+  const po = state.purchaseOrders.find(o=>o.id===pedidoId);
+  if(po && po.etapa==='cotacao'){ po.etapa = 'aprovacao'; dbUpdatePurchaseOrder({ id: po.id, etapa: po.etapa }); }
+  dbInsertPurchaseOrderQuote(quote);
+  showToast('Cotação adicionada.');
+  renderPedidoDetail(pedidoId);
+}
+async function excluirCotacao(quoteId){
+  if(!(await customConfirm('Excluir esta cotação?'))) return;
+  const q = state.purchaseOrderQuotes.find(x=>x.id===quoteId);
+  state.purchaseOrderQuotes = state.purchaseOrderQuotes.filter(x=>x.id!==quoteId);
+  dbDeletePurchaseOrderQuote(quoteId);
+  showToast('Cotação removida.');
+  if(q) renderPedidoDetail(q.purchase_order_id);
+}
+async function aprovarCotacao(quoteId){
+  const q = state.purchaseOrderQuotes.find(x=>x.id===quoteId);
+  if(!q) return;
+  if(!(await customConfirm('Aprovar esta cotação como a escolhida para o pedido?'))) return;
+  const po = state.purchaseOrders.find(o=>o.id===q.purchase_order_id);
+  if(!po) return;
+  const total = (q.itens||[]).reduce((s,x)=>{
+    const item = state.purchaseOrderItems.find(i=>i.id===x.purchase_order_item_id);
+    return s + (Number(x.valor_unitario)||0) * (item?.quantidade||1);
+  }, 0);
+  po.etapa = 'aprovado';
+  po.aprovado_quote_id = quoteId;
+  po.valor_total = total;
+  po.status = 'Aprovado';
+  dbUpdatePurchaseOrder({ id: po.id, etapa: 'aprovado', aprovado_quote_id: quoteId, valor_total: total, status: 'Aprovado' });
+  showToast('Cotação aprovada!');
+  renderPedidoDetail(po.id);
+}
+
+// --- impressao do pedido ---
+function imprimirPedidoCompra(id){
+  const o = state.purchaseOrders.find(x=>x.id===id);
+  if(!o) return;
+  if(typeof window.jspdf === 'undefined'){ showToast('Não foi possível carregar o gerador de PDF (verifique sua conexão e tente novamente).'); return; }
+  const items = state.purchaseOrderItems.filter(i=>i.purchase_order_id===id);
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:'mm', format:'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 16;
+  let y = 20;
+
+  try{ doc.addImage(LOGO_SRC, 'PNG', margin, y-8, 34, 34*(117/426)); }catch(e){}
+  doc.setFont('helvetica','bold'); doc.setFontSize(15);
+  doc.text('PEDIDO DE COMPRA', pageWidth-margin, y-2, {align:'right'});
+  doc.setFont('helvetica','normal'); doc.setFontSize(9);
+  doc.text(o.numero, pageWidth-margin, y+4, {align:'right'});
+  y += 12;
+  doc.setDrawColor(180); doc.setLineWidth(0.3);
+  doc.line(margin, y, pageWidth-margin, y);
+  y += 9;
+
+  doc.setFontSize(9);
+  doc.setFont('helvetica','bold'); doc.text('Data:', margin, y);
+  doc.setFont('helvetica','normal'); doc.text(fmtDate(o.data_pedido), margin+18, y);
+  doc.setFont('helvetica','bold'); doc.text('Solicitante:', margin+90, y);
+  doc.setFont('helvetica','normal'); doc.text(o.solicitante||'—', margin+120, y);
+  y += 7;
+  doc.setFont('helvetica','bold'); doc.text('Destinação:', margin, y);
+  doc.setFont('helvetica','normal'); doc.text(o.destinacao||'—', margin+18, y);
+  y += 12;
+
+  doc.autoTable({
+    startY: y,
+    margin: { left: margin, right: margin },
+    head: [['Código','Descrição','Quantidade']],
+    body: items.map(it=>[it.codigo||'—', it.descricao, String(it.quantidade)]),
+    theme: 'grid',
+    styles: { fontSize: 8.5, cellPadding: 3 },
+    headStyles: { fillColor:[240,240,240], textColor:[20,20,20], fontStyle:'bold' }
+  });
+  y = doc.lastAutoTable.finalY + 10;
+
+  if(o.etapa === 'aprovado'){
+    const quote = state.purchaseOrderQuotes.find(q=>q.id===o.aprovado_quote_id);
+    const supplier = quote ? state.suppliers.find(s=>s.id===quote.supplier_id) : null;
+    if(y > pageHeight - 40){ doc.addPage(); y = 20; }
+    doc.setFont('helvetica','bold'); doc.setFontSize(10);
+    doc.text('Fornecedor aprovado', margin, y);
+    y += 6;
+    doc.setFont('helvetica','normal'); doc.setFontSize(9);
+    doc.text(`${supplier ? supplier.nome : '—'}${quote?.prazo_entrega ? ' · Prazo de entrega: '+quote.prazo_entrega : ''}`, margin, y);
+    y += 6;
+    doc.setFont('helvetica','bold');
+    doc.text(`Valor total: ${formatBRL(o.valor_total||0)}`, margin, y);
+    y += 10;
+  }
+
+  doc.setFontSize(8); doc.setTextColor(120,120,120);
+  doc.text('Documento gerado pelo sistema de Almoxarifado — Grupo Jet', margin, pageHeight-12);
+
+  doc.save(`pedido_compra_${o.numero}.pdf`);
+  showToast('PDF gerado.');
+}
+
+// ---------- FINANCEIRO: FORNECEDORES ----------
+async function dbInsertSupplier(s){ const {error}=await sb.from('suppliers').insert(s); if(error) showToast('Erro ao salvar fornecedor: '+error.message); }
+async function dbUpdateSupplier(s){ const {error}=await sb.from('suppliers').update(s).eq('id',s.id); if(error) showToast('Erro ao salvar fornecedor: '+error.message); }
+async function dbDeleteSupplier(id){ const {error}=await sb.from('suppliers').delete().eq('id',id); if(error) showToast('Erro ao excluir fornecedor: '+error.message); }
+function resetSupplierForm(){
+  state.editingSupplierId = null;
+  document.getElementById('supplierFormTitle').textContent = 'Novo fornecedor';
+  ['sup_nome','sup_cnpj','sup_vendedor','sup_contato','sup_localidade','sup_pagamento'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('supSubmitBtn').textContent = 'Cadastrar fornecedor';
+  document.getElementById('supCancelBtn').style.display = 'none';
+}
+async function saveSupplier(evt){
+  evt.preventDefault();
+  const nome = document.getElementById('sup_nome').value.trim();
+  if(!nome){ showToast('Preencha o nome da empresa.'); return; }
+  const data = {
+    nome,
+    cnpj: document.getElementById('sup_cnpj').value.trim()||null,
+    vendedor: document.getElementById('sup_vendedor').value.trim()||null,
+    contato: document.getElementById('sup_contato').value.trim()||null,
+    localidade: document.getElementById('sup_localidade').value.trim()||null,
+    metodo_pagamento: document.getElementById('sup_pagamento').value.trim()||null
+  };
+  if(state.editingSupplierId){
+    data.id = state.editingSupplierId;
+    const idx = state.suppliers.findIndex(s=>s.id===data.id);
+    if(idx>-1) state.suppliers[idx] = {...state.suppliers[idx], ...data};
+    dbUpdateSupplier(data);
+    showToast('Fornecedor atualizado.');
+  }else{
+    data.id = uid();
+    state.suppliers.push(data);
+    dbInsertSupplier(data);
+    showToast('Fornecedor cadastrado.');
+  }
+  resetSupplierForm();
+  renderSuppliers();
+}
+function editSupplier(id){
+  const s = state.suppliers.find(x=>x.id===id);
+  if(!s) return;
+  state.editingSupplierId = id;
+  document.getElementById('supplierFormTitle').textContent = 'Editar fornecedor';
+  document.getElementById('sup_nome').value = s.nome||'';
+  document.getElementById('sup_cnpj').value = s.cnpj||'';
+  document.getElementById('sup_vendedor').value = s.vendedor||'';
+  document.getElementById('sup_contato').value = s.contato||'';
+  document.getElementById('sup_localidade').value = s.localidade||'';
+  document.getElementById('sup_pagamento').value = s.metodo_pagamento||'';
+  document.getElementById('supSubmitBtn').textContent = 'Salvar alterações';
+  document.getElementById('supCancelBtn').style.display = 'inline-flex';
+  window.scrollTo(0,0);
+}
+async function deleteSupplier(id){
+  const s = state.suppliers.find(x=>x.id===id);
+  if(!s) return;
+  if(!(await customConfirm(`Excluir o fornecedor "${s.nome}"?`))) return;
+  state.suppliers = state.suppliers.filter(x=>x.id!==id);
+  renderSuppliers();
+  showToast('Fornecedor excluído.');
+  dbDeleteSupplier(id);
+}
+function renderSuppliers(filter){
+  filter = filter!==undefined ? filter : (document.getElementById('supSearchInput')?.value||'');
+  const wrap = document.getElementById('supTableWrap');
+  if(!wrap) return;
+  const q = normalize(filter);
+  let list = state.suppliers.slice();
+  if(q) list = list.filter(s=>[s.nome,s.cnpj,s.localidade].some(f=>normalize(f).includes(q)));
+  document.getElementById('supCount').textContent = `${list.length} fornecedor(es)`;
+  if(list.length===0){
+    wrap.innerHTML = `<div class="empty-state"><div class="icon">🏢</div><p>Nenhum fornecedor cadastrado ainda.</p></div>`;
+    return;
+  }
+  const rows = list.map(s=>`
+    <tr>
+      <td>${escapeHtml(s.nome)}</td>
+      <td class="code">${escapeHtml(s.cnpj||'—')}</td>
+      <td>${escapeHtml(s.vendedor||'—')}</td>
+      <td>${escapeHtml(s.contato||'—')}</td>
+      <td>${escapeHtml(s.localidade||'—')}</td>
+      <td>${escapeHtml(s.metodo_pagamento||'—')}</td>
+      <td class="row-actions">
+        <button class="btn btn-outline btn-sm" onclick="editSupplier('${s.id}')">Editar</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteSupplier('${s.id}')">Excluir</button>
+      </td>
+    </tr>`).join('');
+  wrap.innerHTML = `<table>
+    <thead><tr><th>Empresa</th><th>CNPJ</th><th>Vendedor</th><th>Contato</th><th>Localidade</th><th>Pagamento</th><th></th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+// ---------- FINANCEIRO: NOTAS FISCAIS ----------
 // ---------- FINANCEIRO: NOTAS FISCAIS ----------
 async function dbInsertInvoice(inv, items){
   const { error } = await sb.from('invoices').insert(inv);
@@ -4394,11 +5010,13 @@ function applyRoleUI(){
   const podeNotas = canAccessFin('notas');
   const podePagamentos = canAccessFin('pagamentos');
   const podeResumo = canAccessFin('resumo');
+  const podeFornecedores = canAccessFin('fornecedores');
   document.getElementById('navFinPedidos').style.display = podePedidos ? 'flex' : 'none';
   document.getElementById('navFinNotas').style.display = podeNotas ? 'flex' : 'none';
   document.getElementById('navFinPagamentos').style.display = podePagamentos ? 'flex' : 'none';
   document.getElementById('navFinResumo').style.display = podeResumo ? 'flex' : 'none';
-  document.getElementById('finSectionLabel').style.display = (podePedidos||podeNotas||podePagamentos||podeResumo) ? 'block' : 'none';
+  document.getElementById('navFinFornecedores').style.display = podeFornecedores ? 'flex' : 'none';
+  document.getElementById('finSectionLabel').style.display = (podePedidos||podeNotas||podePagamentos||podeResumo||podeFornecedores) ? 'block' : 'none';
 }
 
 async function enterApp(){
@@ -4471,6 +5089,7 @@ function openUserForm(id){
   document.getElementById('u_fin_notas').checked = finAcesso.includes('notas');
   document.getElementById('u_fin_pagamentos').checked = finAcesso.includes('pagamentos');
   document.getElementById('u_fin_resumo').checked = finAcesso.includes('resumo');
+  document.getElementById('u_fin_fornecedores').checked = finAcesso.includes('fornecedores');
   document.getElementById('modalUser').classList.add('active');
 }
 async function saveUserForm(evt){
@@ -4483,6 +5102,7 @@ async function saveUserForm(evt){
   if(document.getElementById('u_fin_notas').checked) finAcesso.push('notas');
   if(document.getElementById('u_fin_pagamentos').checked) finAcesso.push('pagamentos');
   if(document.getElementById('u_fin_resumo').checked) finAcesso.push('resumo');
+  if(document.getElementById('u_fin_fornecedores').checked) finAcesso.push('fornecedores');
 
   if(!name || !email){ showToast('Preencha nome e e-mail.'); return; }
   if(role === 'desenvolvedor' && normalize(email) !== normalize(DEV_PROTECTED_EMAIL)){
