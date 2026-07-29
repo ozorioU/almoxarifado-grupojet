@@ -3730,8 +3730,11 @@ function calcularValorItemNaCotacao(quote, item, totalItensPedido){
   if(!e || !e.valor_unitario) return null;
   const c = calcularItemComImposto(Number(e.valor_unitario)||0, Number(e.aliq_icms)||0, Number(e.aliq_ipi)||0, Number(e.aliq_pis)||0, Number(e.aliq_cofins)||0, item.quantidade);
   const freightPerItem = totalItensPedido>0 ? (Number(quote.frete)||0) / totalItensPedido : 0;
+  const aliqDifal = Number(quote.aliq_difal)||0;
+  const valorDifal = c.totalComImposto * aliqDifal;
   c.freightPerItem = freightPerItem;
-  c.totalComFrete = c.totalComImposto + freightPerItem;
+  c.valorDifal = valorDifal;
+  c.totalComFrete = c.totalComImposto + freightPerItem + valorDifal;
   return c;
 }
 
@@ -3805,15 +3808,19 @@ function renderPedidoDetail(id){
               <label>Frete (R$) — dividido igualmente entre os ${items.length} item(ns)</label>
               <input type="text" id="cot_frete" placeholder="0,00" oninput="atualizarPreviewCotacao(${items.length})">
             </div>
+            <div class="form-field">
+              <label>DIFAL % (sobre o valor c/ imposto)</label>
+              <input type="text" id="cot_difal" placeholder="Ex.: 7" oninput="atualizarPreviewCotacao(${items.length})">
+            </div>
           </div>
-          <p style="font-size:12px;color:var(--ink-soft);margin-bottom:10px;">Informe o valor unitário <strong>sem imposto</strong> — o sistema calcula o valor com imposto (ICMS/IPI/PIS/COFINS) + frete automaticamente.</p>
+          <p style="font-size:12px;color:var(--ink-soft);margin-bottom:10px;">Informe o valor unitário <strong>sem imposto</strong> — o sistema calcula o valor com imposto (ICMS/IPI/PIS/COFINS) + frete + DIFAL automaticamente.</p>
           <div style="overflow-x:auto;">
           <table style="width:100%;">
             <thead><tr>
               <th style="text-align:left;">Item</th><th>Qtd.</th>
               <th>Vlr. Unit.<br>s/ imposto</th>
               <th>ICMS %</th><th>IPI %</th><th>PIS %</th><th>COFINS %</th>
-              <th>Valor c/ imposto<br>+ frete</th>
+              <th>Valor c/ imposto<br>+ frete + DIFAL</th>
             </tr></thead>
             <tbody>
               ${items.map(it=>`<tr>
@@ -3845,6 +3852,7 @@ function renderPedidoDetail(id){
 }
 function atualizarPreviewCotacao(qtdItens){
   const freteTotal = parseBRL(document.getElementById('cot_frete')?.value || '0');
+  const aliqDifal = parsePct(document.getElementById('cot_difal')?.value || '0');
   document.querySelectorAll('.cot-item-valor').forEach(inp=>{
     const itemId = inp.dataset.itemId;
     const qtd = Number(inp.dataset.qtd)||1;
@@ -3855,8 +3863,9 @@ function atualizarPreviewCotacao(qtdItens){
     const cofins = parsePct(document.querySelector(`.cot-item-cofins[data-item-id="${itemId}"]`)?.value);
     const c = calcularItemComImposto(valorUnit, icms, ipi, pis, cofins, qtd);
     const freightPerItem = qtdItens>0 ? freteTotal/qtdItens : 0;
+    const valorDifal = c.totalComImposto * aliqDifal;
     const previewEl = document.getElementById('cot-preview-'+itemId);
-    if(previewEl) previewEl.textContent = formatBRL(c.totalComImposto + freightPerItem);
+    if(previewEl) previewEl.textContent = formatBRL(c.totalComImposto + freightPerItem + valorDifal);
   });
 }
 
@@ -3879,6 +3888,7 @@ function renderComparativoCotacoes(o, items, quotes){
         <div style="font-size:10.5px;color:var(--ink-soft);font-weight:400;">Unit. s/imp. ${formatBRL(c.valorUnitSemImposto)}</div>
         <div style="font-size:10.5px;color:var(--ink-soft);font-weight:400;">Unit. c/imp. ${formatBRL(c.valorUnitComImposto)}</div>
         ${c.freightPerItem>0 ? `<div style="font-size:10.5px;color:var(--ink-soft);font-weight:400;">Frete/item ${formatBRL(c.freightPerItem)}</div>` : ''}
+        ${c.valorDifal>0 ? `<div style="font-size:10.5px;color:var(--ink-soft);font-weight:400;">DIFAL ${formatBRL(c.valorDifal)}</div>` : ''}
         <div style="font-weight:${isMenor?'700':'400'};">Total ${formatBRL(c.totalComFrete)}</div>
         ${!isMenor && menor>0 ? `<div style="font-size:10.5px;color:var(--red);">+${diffPct.toFixed(1)}%</div>` : ''}
         <div style="font-size:9.5px;color:var(--blue);font-weight:400;">créd. impostos ${formatBRL(creditos)}</div>
@@ -3921,7 +3931,7 @@ function renderComparativoCotacoes(o, items, quotes){
       <thead>
         <tr>
           <th style="text-align:left;">Item</th>
-          ${quotes.map(q=>`<th>${escapeHtml(supplierName(q))}<div style="font-size:10.5px;font-weight:400;color:var(--ink-soft);">${q.prazo_entrega?escapeHtml(q.prazo_entrega):''}${q.frete>0?' · frete '+formatBRL(q.frete):''}</div></th>`).join('')}
+          ${quotes.map(q=>`<th>${escapeHtml(supplierName(q))}<div style="font-size:10.5px;font-weight:400;color:var(--ink-soft);">${q.prazo_entrega?escapeHtml(q.prazo_entrega):''}${q.frete>0?' · frete '+formatBRL(q.frete):''}${q.aliq_difal>0?' · DIFAL '+(q.aliq_difal*100).toFixed(1)+'%':''}</div></th>`).join('')}
         </tr>
       </thead>
       <tbody>${rows}</tbody>
@@ -3962,6 +3972,7 @@ async function salvarCotacao(pedidoId){
   const supplierId = document.getElementById('cot_fornecedor').value;
   const prazo = document.getElementById('cot_prazo').value.trim();
   const frete = parseBRL(document.getElementById('cot_frete')?.value || '0');
+  const aliqDifal = parsePct(document.getElementById('cot_difal')?.value || '0');
   if(!supplierId){ showToast('Selecione um fornecedor.'); return; }
   const valorInputs = [...document.querySelectorAll('.cot-item-valor')];
   const itens = valorInputs.map(inp => {
@@ -3980,7 +3991,7 @@ async function salvarCotacao(pedidoId){
     };
   }).filter(x=>x.valor_unitario>0);
   if(itens.length===0){ showToast('Informe ao menos um valor de item.'); return; }
-  const quote = { id: uid(), purchase_order_id: pedidoId, supplier_id: supplierId, prazo_entrega: prazo || null, frete, itens };
+  const quote = { id: uid(), purchase_order_id: pedidoId, supplier_id: supplierId, prazo_entrega: prazo || null, frete, aliq_difal: aliqDifal, itens };
   state.purchaseOrderQuotes.push(quote);
   const po = state.purchaseOrders.find(o=>o.id===pedidoId);
   if(po && po.etapa==='cotacao'){ po.etapa = 'aprovacao'; dbUpdatePurchaseOrder({ id: po.id, etapa: po.etapa }); }
