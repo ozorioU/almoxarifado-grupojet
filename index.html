@@ -3714,12 +3714,35 @@ function renderPurchaseOrders(filter){
 }
 
 // --- detalhe do pedido: itens, cotacoes, aprovacao ---
+function poIsFullyApproved(items){
+  return items.length>0 && items.every(it=>it.aprovado_quote_id);
+}
+function getItemApprovalInfo(item, quotes){
+  if(!item.aprovado_quote_id) return null;
+  const quote = quotes.find(q=>q.id===item.aprovado_quote_id);
+  if(!quote) return null;
+  const supplier = state.suppliers.find(s=>s.id===quote.supplier_id);
+  const c = calcularValorItemNaCotacao(quote, item, state.purchaseOrderItems.filter(i=>i.purchase_order_id===item.purchase_order_id).length);
+  return { quote, supplier, calc: c };
+}
+function calcularValorItemNaCotacao(quote, item, totalItensPedido){
+  const e = (quote.itens||[]).find(x=>x.purchase_order_item_id===item.id);
+  if(!e || !e.valor_unitario) return null;
+  const c = calcularItemComImposto(Number(e.valor_unitario)||0, Number(e.aliq_icms)||0, Number(e.aliq_ipi)||0, Number(e.aliq_pis)||0, Number(e.aliq_cofins)||0, item.quantidade);
+  const freightPerItem = totalItensPedido>0 ? (Number(quote.frete)||0) / totalItensPedido : 0;
+  c.freightPerItem = freightPerItem;
+  c.totalComFrete = c.totalComImposto + freightPerItem;
+  return c;
+}
+
 function renderPedidoDetail(id){
   const o = state.purchaseOrders.find(x=>x.id===id);
   const content = document.getElementById('pcDetailContent');
   if(!o){ content.innerHTML = '<p>Pedido não encontrado.</p>'; return; }
   const items = state.purchaseOrderItems.filter(i=>i.purchase_order_id===id);
   const quotes = state.purchaseOrderQuotes.filter(q=>q.purchase_order_id===id);
+  const fullyApproved = poIsFullyApproved(items);
+  const algumAprovado = items.some(it=>it.aprovado_quote_id);
 
   let html = `
     <div class="card">
@@ -3734,17 +3757,22 @@ function renderPedidoDetail(id){
     </div>
     <div class="section-title"><h3>Itens do pedido</h3></div>
     <div class="card" style="padding:0;overflow-x:auto;">
-      <table><thead><tr><th>Código</th><th>Descrição</th><th>Quantidade</th></tr></thead>
-      <tbody>${items.map(it=>`<tr><td class="code">${escapeHtml(it.codigo||'—')}</td><td>${escapeHtml(it.descricao)}</td><td class="code">${it.quantidade}</td></tr>`).join('')}</tbody></table>
+      <table><thead><tr><th>Código</th><th>Descrição</th><th>Quantidade</th><th>Aprovado com</th></tr></thead>
+      <tbody>${items.map(it=>{
+        const ap = getItemApprovalInfo(it, quotes);
+        const apCell = ap
+          ? `<span class="badge badge-posse">${escapeHtml(ap.supplier?ap.supplier.nome:'—')}</span> <span class="code">${formatBRL(ap.calc.totalComFrete)}</span>`
+          : `<span class="code" style="color:var(--ink-faint);">Pendente</span>`;
+        return `<tr><td class="code">${escapeHtml(it.codigo||'—')}</td><td>${escapeHtml(it.descricao)}</td><td class="code">${it.quantidade}</td><td>${apCell}</td></tr>`;
+      }).join('')}</tbody></table>
     </div>`;
 
-  if(o.etapa==='aprovado'){
-    const quote = quotes.find(q=>q.id===o.aprovado_quote_id);
-    const supplier = quote ? state.suppliers.find(s=>s.id===quote.supplier_id) : null;
+  if(algumAprovado){
+    const totalAprovado = items.reduce((s,it)=>{ const ap = getItemApprovalInfo(it, quotes); return s + (ap ? ap.calc.totalComFrete : 0); }, 0);
     html += `
     <div class="highlight-banner" style="margin-top:18px;">
-      <div><div class="hb-label">Fornecedor aprovado</div><div class="hb-sub">${supplier ? escapeHtml(supplier.nome) : '—'}${quote?.prazo_entrega ? ' · prazo '+escapeHtml(quote.prazo_entrega) : ''}</div></div>
-      <div class="hb-value">${formatBRL(o.valor_total||0)}</div>
+      <div><div class="hb-label">${fullyApproved ? 'Pedido totalmente aprovado' : 'Aprovação parcial — ainda há itens pendentes'}</div><div class="hb-sub">${items.filter(it=>it.aprovado_quote_id).length} de ${items.length} item(ns) aprovado(s)</div></div>
+      <div class="hb-value">${formatBRL(totalAprovado)}</div>
     </div>`;
   }
 
@@ -3754,7 +3782,7 @@ function renderPedidoDetail(id){
       <span class="count">${quotes.length}/5</span>
     </div>`;
 
-  if(quotes.length < 5 && o.etapa !== 'aprovado'){
+  if(quotes.length < 5 && !fullyApproved){
     if(state.suppliers.length===0){
       html += `<div class="empty-state"><p>Nenhum fornecedor cadastrado ainda. <a onclick="switchView('fin-fornecedores')" style="cursor:pointer;color:var(--blue);">Cadastre um fornecedor</a> antes de anexar uma cotação.</p></div>`;
     }else{
@@ -3773,24 +3801,30 @@ function renderPedidoDetail(id){
               <label>Prazo de entrega</label>
               <input type="text" id="cot_prazo" placeholder="Ex.: 5 dias úteis">
             </div>
+            <div class="form-field">
+              <label>Frete (R$) — dividido igualmente entre os ${items.length} item(ns)</label>
+              <input type="text" id="cot_frete" placeholder="0,00" oninput="atualizarPreviewCotacao(${items.length})">
+            </div>
           </div>
-          <p style="font-size:12px;color:var(--ink-soft);margin-bottom:10px;">Informe o valor unitário <strong>sem imposto</strong> — o sistema calcula o valor com imposto (ICMS/IPI/PIS/COFINS) automaticamente, igual no mapa de cotação.</p>
+          <p style="font-size:12px;color:var(--ink-soft);margin-bottom:10px;">Informe o valor unitário <strong>sem imposto</strong> — o sistema calcula o valor com imposto (ICMS/IPI/PIS/COFINS) + frete automaticamente.</p>
           <div style="overflow-x:auto;">
           <table style="width:100%;">
             <thead><tr>
               <th style="text-align:left;">Item</th><th>Qtd.</th>
               <th>Vlr. Unit.<br>s/ imposto</th>
               <th>ICMS %</th><th>IPI %</th><th>PIS %</th><th>COFINS %</th>
+              <th>Valor c/ imposto<br>+ frete</th>
             </tr></thead>
             <tbody>
               ${items.map(it=>`<tr>
                 <td>${escapeHtml(it.descricao)}</td>
                 <td class="code" style="text-align:center;">${it.quantidade}</td>
-                <td><input type="text" class="cot-item-valor" data-item-id="${it.id}" placeholder="0,00" style="max-width:110px;"></td>
-                <td><input type="text" class="cot-item-icms" data-item-id="${it.id}" placeholder="12" value="12" style="max-width:60px;text-align:center;"></td>
-                <td><input type="text" class="cot-item-ipi" data-item-id="${it.id}" placeholder="15" value="15" style="max-width:60px;text-align:center;"></td>
-                <td><input type="text" class="cot-item-pis" data-item-id="${it.id}" placeholder="1,65" value="1,65" style="max-width:60px;text-align:center;"></td>
-                <td><input type="text" class="cot-item-cofins" data-item-id="${it.id}" placeholder="7,6" value="7,6" style="max-width:60px;text-align:center;"></td>
+                <td><input type="text" class="cot-item-valor" data-item-id="${it.id}" data-qtd="${it.quantidade}" placeholder="0,00" style="max-width:110px;" oninput="atualizarPreviewCotacao(${items.length})"></td>
+                <td><input type="text" class="cot-item-icms" data-item-id="${it.id}" placeholder="12" value="12" style="max-width:55px;text-align:center;" oninput="atualizarPreviewCotacao(${items.length})"></td>
+                <td><input type="text" class="cot-item-ipi" data-item-id="${it.id}" placeholder="15" value="15" style="max-width:55px;text-align:center;" oninput="atualizarPreviewCotacao(${items.length})"></td>
+                <td><input type="text" class="cot-item-pis" data-item-id="${it.id}" placeholder="1,65" value="1,65" style="max-width:55px;text-align:center;" oninput="atualizarPreviewCotacao(${items.length})"></td>
+                <td><input type="text" class="cot-item-cofins" data-item-id="${it.id}" placeholder="7,6" value="7,6" style="max-width:55px;text-align:center;" oninput="atualizarPreviewCotacao(${items.length})"></td>
+                <td class="code" id="cot-preview-${it.id}" style="font-weight:700;white-space:nowrap;">R$ 0,00</td>
               </tr>`).join('')}
             </tbody>
           </table>
@@ -3809,36 +3843,54 @@ function renderPedidoDetail(id){
 
   content.innerHTML = html;
 }
+function atualizarPreviewCotacao(qtdItens){
+  const freteTotal = parseBRL(document.getElementById('cot_frete')?.value || '0');
+  document.querySelectorAll('.cot-item-valor').forEach(inp=>{
+    const itemId = inp.dataset.itemId;
+    const qtd = Number(inp.dataset.qtd)||1;
+    const valorUnit = parseBRL(inp.value);
+    const icms = parsePct(document.querySelector(`.cot-item-icms[data-item-id="${itemId}"]`)?.value);
+    const ipi = parsePct(document.querySelector(`.cot-item-ipi[data-item-id="${itemId}"]`)?.value);
+    const pis = parsePct(document.querySelector(`.cot-item-pis[data-item-id="${itemId}"]`)?.value);
+    const cofins = parsePct(document.querySelector(`.cot-item-cofins[data-item-id="${itemId}"]`)?.value);
+    const c = calcularItemComImposto(valorUnit, icms, ipi, pis, cofins, qtd);
+    const freightPerItem = qtdItens>0 ? freteTotal/qtdItens : 0;
+    const previewEl = document.getElementById('cot-preview-'+itemId);
+    if(previewEl) previewEl.textContent = formatBRL(c.totalComImposto + freightPerItem);
+  });
+}
+
 function renderComparativoCotacoes(o, items, quotes){
   const supplierName = q => { const s = state.suppliers.find(x=>x.id===q.supplier_id); return s ? s.nome : '—'; };
-  const itemEntry = (quote, itemId) => (quote.itens||[]).find(x=>x.purchase_order_item_id===itemId);
-  const calc = (quote, item) => {
-    const e = itemEntry(quote, item.id);
-    if(!e || !e.valor_unitario) return null;
-    return calcularItemComImposto(Number(e.valor_unitario)||0, Number(e.aliq_icms)||0, Number(e.aliq_ipi)||0, Number(e.aliq_pis)||0, Number(e.aliq_cofins)||0, item.quantidade);
-  };
+  const calc = (quote, item) => calcularValorItemNaCotacao(quote, item, items.length);
 
   const rows = items.map(it=>{
     const calculos = quotes.map(q => calc(q, it));
-    const validos = calculos.filter(c=>c && c.totalComImposto>0);
-    const menor = validos.length ? Math.min(...validos.map(c=>c.totalComImposto)) : 0;
-    const cells = calculos.map(c=>{
-      if(!c || c.totalComImposto<=0) return `<td class="code" style="text-align:center;color:var(--ink-faint);">—</td>`;
-      const isMenor = c.totalComImposto === menor;
-      const diffPct = menor>0 ? ((c.totalComImposto-menor)/menor*100) : 0;
+    const validos = calculos.filter(c=>c && c.totalComFrete>0);
+    const menor = validos.length ? Math.min(...validos.map(c=>c.totalComFrete)) : 0;
+    const cells = calculos.map((c,idx)=>{
+      const quote = quotes[idx];
+      if(!c || c.totalComFrete<=0) return `<td class="code" style="text-align:center;color:var(--ink-faint);">—</td>`;
+      const isMenor = c.totalComFrete === menor;
+      const diffPct = menor>0 ? ((c.totalComFrete-menor)/menor*100) : 0;
       const creditos = c.valorIcms + c.valorPis + c.valorCofins;
-      return `<td class="code" style="text-align:center;${isMenor?'background:#DCFCE7;font-weight:700;':''}">
+      const isApproved = it.aprovado_quote_id === quote.id;
+      return `<td class="code" style="text-align:center;${isMenor?'background:#DCFCE7;':''}${isApproved?'outline:2px solid var(--green);outline-offset:-2px;':''}">
         <div style="font-size:10.5px;color:var(--ink-soft);font-weight:400;">Unit. s/imp. ${formatBRL(c.valorUnitSemImposto)}</div>
         <div style="font-size:10.5px;color:var(--ink-soft);font-weight:400;">Unit. c/imp. ${formatBRL(c.valorUnitComImposto)}</div>
-        <div>Total c/imp. ${formatBRL(c.totalComImposto)}</div>
+        ${c.freightPerItem>0 ? `<div style="font-size:10.5px;color:var(--ink-soft);font-weight:400;">Frete/item ${formatBRL(c.freightPerItem)}</div>` : ''}
+        <div style="font-weight:${isMenor?'700':'400'};">Total ${formatBRL(c.totalComFrete)}</div>
         ${!isMenor && menor>0 ? `<div style="font-size:10.5px;color:var(--red);">+${diffPct.toFixed(1)}%</div>` : ''}
         <div style="font-size:9.5px;color:var(--blue);font-weight:400;">créd. impostos ${formatBRL(creditos)}</div>
+        ${isApproved
+          ? `<button class="btn btn-outline btn-sm" style="margin-top:6px;" onclick="desaprovarItem('${it.id}')">✓ Aprovado — desfazer</button>`
+          : (!it.aprovado_quote_id ? `<button class="btn btn-primary btn-sm" style="margin-top:6px;" onclick="aprovarItemComCotacao('${it.id}','${quote.id}')">Aprovar este item</button>` : '')}
       </td>`;
     }).join('');
     return `<tr><td>${escapeHtml(it.descricao)}</td>${cells}</tr>`;
   }).join('');
 
-  const totais = quotes.map(q => items.reduce((s,it)=>{ const c = calc(q,it); return s + (c?c.totalComImposto:0); }, 0));
+  const totais = quotes.map(q => items.reduce((s,it)=>{ const c = calc(q,it); return s + (c?c.totalComFrete:0); }, 0));
   const totaisValidos = totais.filter(t=>t>0);
   const menorTotal = totaisValidos.length ? Math.min(...totaisValidos) : 0;
   const totalCells = totais.map(t=>{
@@ -3853,23 +3905,23 @@ function renderComparativoCotacoes(o, items, quotes){
   }).join('');
 
   const actionCells = quotes.map(q=>{
-    const approved = q.id === o.aprovado_quote_id;
-    if(approved) return `<td style="text-align:center;"><span class="badge badge-posse">✓ Aprovado</span></td>`;
-    const podeAprovar = o.etapa !== 'aprovado';
+    const todosAprovadosComEsta = items.length>0 && items.every(it=>it.aprovado_quote_id===q.id);
     return `<td style="text-align:center;">
-      ${podeAprovar ? `<button class="btn btn-primary btn-sm" onclick="aprovarCotacao('${q.id}')">Aprovar</button>` : ''}
+      ${todosAprovadosComEsta
+        ? `<span class="badge badge-posse">✓ Todos os itens aprovados</span>`
+        : `<button class="btn btn-primary btn-sm" onclick="aprovarCotacaoInteira('${q.id}')">Aprovar cotação inteira</button>`}
       <button class="btn btn-danger btn-sm" onclick="excluirCotacao('${q.id}')" style="margin-top:4px;">Excluir</button>
     </td>`;
   }).join('');
 
   return `
-  <p style="font-size:12px;color:var(--ink-soft);margin:10px 0;">Valores em <strong>"Total c/imp."</strong> já incluem o IPI (é o que se paga de fato). "Créd. impostos" mostra ICMS+PIS+COFINS recuperáveis como crédito, apenas informativo.</p>
+  <p style="font-size:12px;color:var(--ink-soft);margin:10px 0;">"Total" já inclui IPI + frete rateado (é o que se paga de fato). "Créd. impostos" mostra ICMS+PIS+COFINS recuperáveis como crédito, apenas informativo. Você pode aprovar item a item, misturando fornecedores, ou aprovar a cotação inteira de um fornecedor de uma vez.</p>
   <div class="card" style="padding:0;overflow-x:auto;">
     <table style="width:100%;">
       <thead>
         <tr>
           <th style="text-align:left;">Item</th>
-          ${quotes.map(q=>`<th>${escapeHtml(supplierName(q))}<div style="font-size:10.5px;font-weight:400;color:var(--ink-soft);">${q.prazo_entrega?escapeHtml(q.prazo_entrega):''}</div></th>`).join('')}
+          ${quotes.map(q=>`<th>${escapeHtml(supplierName(q))}<div style="font-size:10.5px;font-weight:400;color:var(--ink-soft);">${q.prazo_entrega?escapeHtml(q.prazo_entrega):''}${q.frete>0?' · frete '+formatBRL(q.frete):''}</div></th>`).join('')}
         </tr>
       </thead>
       <tbody>${rows}</tbody>
@@ -3909,6 +3961,7 @@ function calcularItemComImposto(valorUnitSemImposto, aliqIcms, aliqIpi, aliqPis,
 async function salvarCotacao(pedidoId){
   const supplierId = document.getElementById('cot_fornecedor').value;
   const prazo = document.getElementById('cot_prazo').value.trim();
+  const frete = parseBRL(document.getElementById('cot_frete')?.value || '0');
   if(!supplierId){ showToast('Selecione um fornecedor.'); return; }
   const valorInputs = [...document.querySelectorAll('.cot-item-valor')];
   const itens = valorInputs.map(inp => {
@@ -3927,7 +3980,7 @@ async function salvarCotacao(pedidoId){
     };
   }).filter(x=>x.valor_unitario>0);
   if(itens.length===0){ showToast('Informe ao menos um valor de item.'); return; }
-  const quote = { id: uid(), purchase_order_id: pedidoId, supplier_id: supplierId, prazo_entrega: prazo || null, itens };
+  const quote = { id: uid(), purchase_order_id: pedidoId, supplier_id: supplierId, prazo_entrega: prazo || null, frete, itens };
   state.purchaseOrderQuotes.push(quote);
   const po = state.purchaseOrders.find(o=>o.id===pedidoId);
   if(po && po.etapa==='cotacao'){ po.etapa = 'aprovacao'; dbUpdatePurchaseOrder({ id: po.id, etapa: po.etapa }); }
@@ -3936,32 +3989,58 @@ async function salvarCotacao(pedidoId){
   renderPedidoDetail(pedidoId);
 }
 async function excluirCotacao(quoteId){
-  if(!(await customConfirm('Excluir esta cotação?'))) return;
-  const q = state.purchaseOrderQuotes.find(x=>x.id===quoteId);
-  state.purchaseOrderQuotes = state.purchaseOrderQuotes.filter(x=>x.id!==quoteId);
-  dbDeletePurchaseOrderQuote(quoteId);
-  showToast('Cotação removida.');
-  if(q) renderPedidoDetail(q.purchase_order_id);
-}
-async function aprovarCotacao(quoteId){
+  if(!(await customConfirm('Excluir esta cotação? Itens aprovados com ela voltarão a ficar pendentes.'))) return;
   const q = state.purchaseOrderQuotes.find(x=>x.id===quoteId);
   if(!q) return;
-  if(!(await customConfirm('Aprovar esta cotação como a escolhida para o pedido?'))) return;
-  const po = state.purchaseOrders.find(o=>o.id===q.purchase_order_id);
+  state.purchaseOrderQuotes = state.purchaseOrderQuotes.filter(x=>x.id!==quoteId);
+  state.purchaseOrderItems.forEach(it=>{ if(it.aprovado_quote_id===quoteId) it.aprovado_quote_id = null; });
+  dbDeletePurchaseOrderQuote(quoteId);
+  atualizarStatusPedidoAposAprovacao(q.purchase_order_id);
+  showToast('Cotação removida.');
+  renderPedidoDetail(q.purchase_order_id);
+}
+function atualizarStatusPedidoAposAprovacao(pedidoId){
+  const po = state.purchaseOrders.find(o=>o.id===pedidoId);
   if(!po) return;
-  const total = (q.itens||[]).reduce((s,x)=>{
-    const item = state.purchaseOrderItems.find(i=>i.id===x.purchase_order_item_id);
-    if(!item) return s;
-    const c = calcularItemComImposto(Number(x.valor_unitario)||0, Number(x.aliq_icms)||0, Number(x.aliq_ipi)||0, Number(x.aliq_pis)||0, Number(x.aliq_cofins)||0, item.quantidade);
-    return s + c.totalComImposto;
-  }, 0);
-  po.etapa = 'aprovado';
-  po.aprovado_quote_id = quoteId;
-  po.valor_total = total;
-  po.status = 'Aprovado';
-  dbUpdatePurchaseOrder({ id: po.id, etapa: 'aprovado', aprovado_quote_id: quoteId, valor_total: total, status: 'Aprovado' });
-  showToast('Cotação aprovada!');
-  renderPedidoDetail(po.id);
+  const items = state.purchaseOrderItems.filter(i=>i.purchase_order_id===pedidoId);
+  const quotes = state.purchaseOrderQuotes.filter(q=>q.purchase_order_id===pedidoId);
+  const fullyApproved = poIsFullyApproved(items);
+  const total = items.reduce((s,it)=>{ const ap = getItemApprovalInfo(it, quotes); return s + (ap ? ap.calc.totalComFrete : 0); }, 0);
+  po.etapa = fullyApproved ? 'aprovado' : (quotes.length>0 ? 'aprovacao' : 'cotacao');
+  po.valor_total = fullyApproved ? total : (total>0 ? total : null);
+  po.status = fullyApproved ? 'Aprovado' : 'Pendente';
+  dbUpdatePurchaseOrder({ id: po.id, etapa: po.etapa, valor_total: po.valor_total, status: po.status });
+}
+async function aprovarItemComCotacao(itemId, quoteId){
+  if(!(await customConfirm('Aprovar este item com essa cotação?'))) return;
+  const item = state.purchaseOrderItems.find(i=>i.id===itemId);
+  if(!item) return;
+  item.aprovado_quote_id = quoteId;
+  await sb.from('purchase_order_items').update({ aprovado_quote_id: quoteId }).eq('id', itemId);
+  atualizarStatusPedidoAposAprovacao(item.purchase_order_id);
+  showToast('Item aprovado.');
+  renderPedidoDetail(item.purchase_order_id);
+}
+async function desaprovarItem(itemId){
+  const item = state.purchaseOrderItems.find(i=>i.id===itemId);
+  if(!item) return;
+  item.aprovado_quote_id = null;
+  await sb.from('purchase_order_items').update({ aprovado_quote_id: null }).eq('id', itemId);
+  atualizarStatusPedidoAposAprovacao(item.purchase_order_id);
+  showToast('Aprovação do item removida.');
+  renderPedidoDetail(item.purchase_order_id);
+}
+async function aprovarCotacaoInteira(quoteId){
+  const q = state.purchaseOrderQuotes.find(x=>x.id===quoteId);
+  if(!q) return;
+  if(!(await customConfirm('Aprovar TODOS os itens do pedido com esta cotação?'))) return;
+  const items = state.purchaseOrderItems.filter(i=>i.purchase_order_id===q.purchase_order_id);
+  const itemsComPreco = items.filter(it => (q.itens||[]).some(x=>x.purchase_order_item_id===it.id && x.valor_unitario>0));
+  itemsComPreco.forEach(it => { it.aprovado_quote_id = quoteId; });
+  await Promise.all(itemsComPreco.map(it => sb.from('purchase_order_items').update({ aprovado_quote_id: quoteId }).eq('id', it.id)));
+  atualizarStatusPedidoAposAprovacao(q.purchase_order_id);
+  showToast(`${itemsComPreco.length} item(ns) aprovado(s) com esta cotação.`);
+  renderPedidoDetail(q.purchase_order_id);
 }
 
 // --- impressao do pedido ---
@@ -4000,26 +4079,35 @@ function imprimirPedidoCompra(id){
   doc.autoTable({
     startY: y,
     margin: { left: margin, right: margin },
-    head: [['Código','Descrição','Quantidade']],
-    body: items.map(it=>[it.codigo||'—', it.descricao, String(it.quantidade)]),
+    head: [['Código','Descrição','Qtd.','Fornecedor aprovado','Valor (c/imp.+frete)']],
+    body: items.map(it=>{
+      const quotes = state.purchaseOrderQuotes.filter(q=>q.purchase_order_id===id);
+      const ap = getItemApprovalInfo(it, quotes);
+      return [
+        it.codigo||'—',
+        it.descricao,
+        String(it.quantidade),
+        ap && ap.supplier ? ap.supplier.nome : 'Pendente',
+        ap ? formatBRL(ap.calc.totalComFrete) : '—'
+      ];
+    }),
     theme: 'grid',
     styles: { fontSize: 8.5, cellPadding: 3 },
     headStyles: { fillColor:[240,240,240], textColor:[20,20,20], fontStyle:'bold' }
   });
   y = doc.lastAutoTable.finalY + 10;
 
-  if(o.etapa === 'aprovado'){
-    const quote = state.purchaseOrderQuotes.find(q=>q.id===o.aprovado_quote_id);
-    const supplier = quote ? state.suppliers.find(s=>s.id===quote.supplier_id) : null;
+  const quotes = state.purchaseOrderQuotes.filter(q=>q.purchase_order_id===id);
+  const itensAprovados = items.filter(it=>it.aprovado_quote_id);
+  if(itensAprovados.length > 0){
     if(y > pageHeight - 40){ doc.addPage(); y = 20; }
     doc.setFont('helvetica','bold'); doc.setFontSize(10);
-    doc.text('Fornecedor aprovado', margin, y);
-    y += 6;
+    doc.text(poIsFullyApproved(items) ? 'Pedido totalmente aprovado' : 'Aprovação parcial', margin, y);
+    y += 7;
     doc.setFont('helvetica','normal'); doc.setFontSize(9);
-    doc.text(`${supplier ? supplier.nome : '—'}${quote?.prazo_entrega ? ' · Prazo de entrega: '+quote.prazo_entrega : ''}`, margin, y);
-    y += 6;
+    const totalGeral = items.reduce((s,it)=>{ const ap = getItemApprovalInfo(it, quotes); return s + (ap?ap.calc.totalComFrete:0); }, 0);
     doc.setFont('helvetica','bold');
-    doc.text(`Valor total: ${formatBRL(o.valor_total||0)}`, margin, y);
+    doc.text(`Valor total (itens aprovados): ${formatBRL(totalGeral)}`, margin, y);
     y += 10;
   }
 
