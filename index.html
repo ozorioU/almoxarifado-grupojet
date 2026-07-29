@@ -921,19 +921,25 @@
                 <h3 style="font-size:13.5px;">Itens do pedido</h3>
               </div>
               <div id="pcItemsList" style="margin-bottom:10px;"></div>
-              <div style="display:grid;grid-template-columns:2fr 110px auto;gap:8px;align-items:end;position:relative;">
+              <div style="display:grid;grid-template-columns:2fr auto;gap:8px;align-items:end;position:relative;">
                 <div class="form-field" style="margin-bottom:0;position:relative;">
                   <label>Buscar item já cadastrado — nome ou código</label>
                   <input type="text" id="pc_item_search" placeholder="Digite para buscar..." oninput="filterPcItemSearch()" autocomplete="off">
                   <div id="pc_item_search_results" style="display:none;position:fixed;z-index:500;background:#fff;border:1px solid var(--border);border-radius:8px;max-height:260px;overflow-y:auto;box-shadow:0 10px 30px rgba(0,0,0,0.12);"></div>
                 </div>
-                <div class="form-field" style="margin-bottom:0;">
-                  <label>Quantidade</label>
-                  <input type="number" id="pc_item_qtd" value="1" min="1">
-                </div>
                 <button type="button" class="btn btn-outline" onclick="abrirCadastroRapidoItem()">+ Item novo</button>
               </div>
-              <div id="pc_item_selected_hint" style="font-size:12px;color:var(--ink-faint);margin-top:6px;"></div>
+              <div id="pc_item_pending_wrap" style="display:none;margin-top:10px;padding:12px 14px;background:var(--blue-soft);border-radius:8px;">
+                <div id="pc_item_pending_label" style="font-size:13px;color:#1e3a6e;margin-bottom:10px;"></div>
+                <div style="display:grid;grid-template-columns:140px auto;gap:10px;align-items:end;">
+                  <div class="form-field" style="margin-bottom:0;">
+                    <label>Quantidade</label>
+                    <input type="number" id="pc_item_qtd" value="1" min="1">
+                  </div>
+                  <button type="button" class="btn btn-primary" onclick="confirmarAdicaoItemPedido()">+ Adicionar à lista</button>
+                  <a onclick="cancelarSelecaoItemPedido()" style="cursor:pointer;color:var(--blue);text-decoration:underline;font-size:12.5px;align-self:center;">Cancelar</a>
+                </div>
+              </div>
 
               <div class="modal-actions" style="justify-content:flex-start;margin-top:20px;">
                 <button type="button" class="btn btn-primary" onclick="salvarPedidoCompra()">📤 Enviar pedido</button>
@@ -1568,7 +1574,7 @@ let state = {
   suppliers: [],
   purchaseOrderQuotes: [],
   pcDraftItems: [],
-  pcSelectedCatalogId: null,
+  pcPendingItem: null,
   currentPedidoDetailId: null,
   editingSupplierId: null
 };
@@ -3514,7 +3520,7 @@ async function dbDeletePurchaseOrderQuote(id){
 // --- fluxo de telas: lista / formulario / detalhe ---
 function abrirNovoPedidoForm(){
   state.pcDraftItems = [];
-  state.pcSelectedCatalogId = null;
+  state.pcPendingItem = null;
   document.getElementById('pcListSection').style.display = 'none';
   document.getElementById('pcDetailSection').style.display = 'none';
   document.getElementById('pcFormSection').style.display = 'block';
@@ -3522,7 +3528,7 @@ function abrirNovoPedidoForm(){
   document.getElementById('pc_solicitante').value = '';
   document.getElementById('pc_destinacao').value = 'Manutenção';
   document.getElementById('pc_item_search').value = '';
-  document.getElementById('pc_item_qtd').value = 1;
+  document.getElementById('pc_item_pending_wrap').style.display = 'none';
   renderPcItemsList();
   window.scrollTo(0,0);
 }
@@ -3565,19 +3571,33 @@ function filterPcItemSearch(){
   }
   resultsEl.style.display = 'block';
 }
-function selecionarItemPedido(catalogId){
-  const entry = state.purchaseItemsCatalog.find(i=>i.id===catalogId);
-  if(!entry) return;
-  const qtd = parseFloat(document.getElementById('pc_item_qtd').value) || 1;
-  if(state.pcDraftItems.some(it=>normalize(it.codigo)===normalize(entry.codigo))){
-    showToast('Esse item já está na lista.');
-  }else{
-    state.pcDraftItems.push({ id: uid(), codigo: entry.codigo, descricao: entry.descricao, quantidade: qtd });
-    renderPcItemsList();
-  }
+function mostrarItemPendente(codigo, descricao){
+  state.pcPendingItem = { codigo, descricao };
   document.getElementById('pc_item_search').value = '';
   document.getElementById('pc_item_search_results').style.display = 'none';
   document.getElementById('pc_item_qtd').value = 1;
+  document.getElementById('pc_item_pending_label').innerHTML = `Selecionado: <span class="code" style="font-weight:700;">${escapeHtml(codigo)}</span> — ${escapeHtml(descricao)}`;
+  document.getElementById('pc_item_pending_wrap').style.display = 'block';
+}
+function selecionarItemPedido(catalogId){
+  const entry = state.purchaseItemsCatalog.find(i=>i.id===catalogId);
+  if(!entry) return;
+  if(state.pcDraftItems.some(it=>normalize(it.codigo)===normalize(entry.codigo))){
+    showToast('Esse item já está na lista.');
+    return;
+  }
+  mostrarItemPendente(entry.codigo, entry.descricao);
+}
+function cancelarSelecaoItemPedido(){
+  state.pcPendingItem = null;
+  document.getElementById('pc_item_pending_wrap').style.display = 'none';
+}
+function confirmarAdicaoItemPedido(){
+  if(!state.pcPendingItem){ showToast('Selecione um item primeiro.'); return; }
+  const qtd = parseFloat(document.getElementById('pc_item_qtd').value) || 1;
+  state.pcDraftItems.push({ id: uid(), codigo: state.pcPendingItem.codigo, descricao: state.pcPendingItem.descricao, quantidade: qtd });
+  renderPcItemsList();
+  cancelarSelecaoItemPedido();
 }
 function removerItemPedido(itemId){
   state.pcDraftItems = state.pcDraftItems.filter(i=>i.id!==itemId);
@@ -3613,12 +3633,10 @@ async function confirmarCadastroRapidoItem(){
   }
   const entry = { id: uid(), codigo, descricao };
   state.purchaseItemsCatalog.push(entry);
-  dbInsertPurchaseItemCatalog(entry);
-  const qtd = parseFloat(document.getElementById('pc_item_qtd').value) || 1;
-  state.pcDraftItems.push({ id: uid(), codigo, descricao, quantidade: qtd });
-  renderPcItemsList();
+  await dbInsertPurchaseItemCatalog(entry);
   closeModal('modalQuickItem');
-  showToast('Item cadastrado e adicionado ao pedido.');
+  mostrarItemPendente(codigo, descricao);
+  showToast('Item cadastrado no catálogo geral. Agora informe a quantidade e adicione ao pedido.');
 }
 
 // --- salvar novo pedido ---
@@ -3788,15 +3806,17 @@ function renderComparativoCotacoes(o, items, quotes){
   };
 
   const rows = items.map(it=>{
+    const unitarios = quotes.map(q => valorItem(q, it.id));
     const valores = quotes.map(q=>({ valor: valorItem(q, it.id) * it.quantidade }));
     const validos = valores.filter(v=>v.valor>0);
     const menor = validos.length ? Math.min(...validos.map(v=>v.valor)) : 0;
-    const cells = valores.map(v=>{
+    const cells = valores.map((v,idx)=>{
       if(v.valor<=0) return `<td class="code" style="text-align:center;color:var(--ink-faint);">—</td>`;
       const isMenor = v.valor === menor;
       const diffPct = menor>0 ? ((v.valor-menor)/menor*100) : 0;
       return `<td class="code" style="text-align:center;${isMenor?'background:#DCFCE7;font-weight:700;':''}">
-        ${formatBRL(v.valor)}
+        <div style="font-size:11px;color:var(--ink-soft);font-weight:400;">Unit. ${formatBRL(unitarios[idx])}</div>
+        <div>Total ${formatBRL(v.valor)}</div>
         ${!isMenor && menor>0 ? `<div style="font-size:10.5px;color:var(--red);">+${diffPct.toFixed(1)}%</div>` : ''}
       </td>`;
     }).join('');
