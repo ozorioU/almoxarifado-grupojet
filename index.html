@@ -1655,7 +1655,7 @@
         </select>
       </div>
       <div class="form-field full">
-        <label>Acesso ao Financeiro</label>
+        <label>Acesso ao Financeiro <span style="font-weight:400;color:var(--ink-faint);">(Administradores já têm acesso total automaticamente — estas opções só valem para Operadores)</span></label>
         <div style="display:flex;flex-wrap:wrap;gap:14px;padding:10px 0;">
           <label style="display:flex;align-items:center;gap:6px;font-weight:500;font-size:13px;">
             <input type="checkbox" id="u_fin_pedidos" style="width:auto;"> Orçamentos
@@ -1678,7 +1678,7 @@
         </div>
       </div>
       <div class="form-field full">
-        <label>Acesso à Frota</label>
+        <label>Acesso à Frota <span style="font-weight:400;color:var(--ink-faint);">(Administradores já têm acesso total automaticamente — estas opções só valem para Operadores)</span></label>
         <div style="display:flex;flex-wrap:wrap;gap:14px;padding:10px 0;">
           <label style="display:flex;align-items:center;gap:6px;font-weight:500;font-size:13px;">
             <input type="checkbox" id="u_frota_veiculos" style="width:auto;"> Veículos
@@ -2135,13 +2135,13 @@ const FIN_VIEW_TO_TAB = { 'fin-pedidos':'pedidos', 'fin-notas':'notas', 'fin-pag
 const FROTA_VIEW_TO_TAB = { 'frota-veiculos':'veiculos', 'frota-termo':'termo' };
 function canAccessFin(tabKey){
   if(!state.currentUser) return false;
-  if(state.currentUser.role === 'desenvolvedor') return true;
+  if(state.currentUser.role === 'desenvolvedor' || state.currentUser.role === 'admin') return true;
   const acesso = state.currentUser.fin_acesso || [];
   return acesso.includes(tabKey);
 }
 function canAccessFrota(tabKey){
   if(!state.currentUser) return false;
-  if(state.currentUser.role === 'desenvolvedor') return true;
+  if(state.currentUser.role === 'desenvolvedor' || state.currentUser.role === 'admin') return true;
   const acesso = state.currentUser.frota_acesso || [];
   return acesso.includes(tabKey);
 }
