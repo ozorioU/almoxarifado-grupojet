@@ -1096,6 +1096,12 @@
                 </div>
                 <div class="form-field"><label>Próxima manutenção (data)</label><input type="date" id="vl_prox_manut_data"></div>
                 <div class="form-field"><label>Próxima manutenção (KM)</label><input type="text" id="vl_prox_manut_km" placeholder="Opcional"></div>
+                <div class="form-field"><label>Apólice de seguro</label><input type="text" id="vl_seguro_apolice"></div>
+                <div class="form-field"><label>Valor da franquia (R$)</label><input type="text" id="vl_seguro_franquia" placeholder="0,00"></div>
+                <div class="form-field">
+                  <label>Rastreador/telemetria instalado</label>
+                  <select id="vl_rastreador"><option value="false">Não</option><option value="true">Sim</option></select>
+                </div>
                 <div class="form-field full"><label>Observações</label><textarea id="vl_obs" rows="2"></textarea></div>
               </div>
               <div class="modal-actions" style="justify-content:flex-start;margin-top:18px;">
@@ -1404,6 +1410,22 @@
           <label>Cidade</label>
           <input type="text" id="f_cidade" list="cidadesList">
           <datalist id="cidadesList"></datalist>
+        </div>
+        <div class="form-field">
+          <label>CNH nº</label>
+          <input type="text" id="f_cnh_numero">
+        </div>
+        <div class="form-field">
+          <label>Categoria CNH</label>
+          <input type="text" id="f_cnh_categoria" placeholder="Ex.: B, AB">
+        </div>
+        <div class="form-field">
+          <label>Validade CNH</label>
+          <input type="date" id="f_cnh_validade">
+        </div>
+        <div class="form-field">
+          <label>Sindicato da categoria</label>
+          <input type="text" id="f_sindicato" placeholder="Ex.: SINTTEL-GO">
         </div>
         <div class="form-field">
           <label>Cargo *</label>
@@ -1762,7 +1784,8 @@ let state = {
   vehicleAssignments: [],
   vehicleMaintenances: [],
   editingVeiculoId: null,
-  currentVeiculoFichaId: null
+  currentVeiculoFichaId: null,
+  termoCondutorVehicleId: null
 };
 
 const ICONS = {
@@ -1825,6 +1848,7 @@ function employeeToRow(e){
     id: e.id, nome: e.nome, matricula: e.matricula || null, cpf: e.cpf || null, cargo: e.cargo,
     setor: e.setor || null, filial: e.filial || null, admissao: e.admissao || null,
     cidade: e.cidade || null, rg: e.rg || null,
+    cnh_numero: e.cnh_numero || null, cnh_categoria: e.cnh_categoria || null, cnh_validade: e.cnh_validade || null, sindicato: e.sindicato || null,
     telefone: e.telefone || null, email: e.email || null, status: e.status || 'Ativo'
   };
 }
@@ -2353,6 +2377,10 @@ function openEmployeeForm(id){
   document.getElementById('f_cpf').value = emp?.cpf || '';
   document.getElementById('f_rg').value = emp?.rg || '';
   document.getElementById('f_cidade').value = emp?.cidade || '';
+  document.getElementById('f_cnh_numero').value = emp?.cnh_numero || '';
+  document.getElementById('f_cnh_categoria').value = emp?.cnh_categoria || '';
+  document.getElementById('f_cnh_validade').value = emp?.cnh_validade || '';
+  document.getElementById('f_sindicato').value = emp?.sindicato || '';
   document.getElementById('f_cargo').value = emp?.cargo || '';
   document.getElementById('f_setor').value = emp?.setor || '';
   document.getElementById('f_filial').value = emp?.filial || '';
@@ -2370,6 +2398,10 @@ async function saveEmployeeForm(evt){
     cpf: document.getElementById('f_cpf').value.trim(),
     rg: document.getElementById('f_rg').value.trim(),
     cidade: document.getElementById('f_cidade').value.trim(),
+    cnh_numero: document.getElementById('f_cnh_numero').value.trim(),
+    cnh_categoria: document.getElementById('f_cnh_categoria').value.trim(),
+    cnh_validade: document.getElementById('f_cnh_validade').value || null,
+    sindicato: document.getElementById('f_sindicato').value.trim(),
     cargo: document.getElementById('f_cargo').value.trim(),
     setor: document.getElementById('f_setor').value.trim(),
     filial: document.getElementById('f_filial').value.trim(),
@@ -5060,8 +5092,9 @@ function abrirNovoVeiculoForm(){
   document.getElementById('vlFichaSection').style.display = 'none';
   document.getElementById('vlFormSection').style.display = 'block';
   document.getElementById('veiculoFormTitle').textContent = 'Novo veículo';
-  ['vl_placa','vl_marca','vl_modelo','vl_ano','vl_cor','vl_renavam','vl_chassi','vl_km_atual','vl_prox_manut_data','vl_prox_manut_km','vl_obs'].forEach(id=>document.getElementById(id).value='');
+  ['vl_placa','vl_marca','vl_modelo','vl_ano','vl_cor','vl_renavam','vl_chassi','vl_km_atual','vl_prox_manut_data','vl_prox_manut_km','vl_obs','vl_seguro_apolice','vl_seguro_franquia'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('vl_status').value = 'Ativo';
+  document.getElementById('vl_rastreador').value = 'false';
   document.getElementById('vlSubmitBtn').textContent = 'Cadastrar veículo';
   window.scrollTo(0,0);
 }
@@ -5090,6 +5123,9 @@ function editVeiculo(id){
   document.getElementById('vl_status').value = v.status||'Ativo';
   document.getElementById('vl_prox_manut_data').value = v.proxima_manutencao_data||'';
   document.getElementById('vl_prox_manut_km').value = v.proxima_manutencao_km!=null?String(v.proxima_manutencao_km):'';
+  document.getElementById('vl_seguro_apolice').value = v.seguro_apolice||'';
+  document.getElementById('vl_seguro_franquia').value = v.seguro_franquia!=null?String(v.seguro_franquia).replace('.',','):'';
+  document.getElementById('vl_rastreador').value = v.rastreador ? 'true' : 'false';
   document.getElementById('vl_obs').value = v.obs||'';
   document.getElementById('vlSubmitBtn').textContent = 'Salvar alterações';
   window.scrollTo(0,0);
@@ -5112,6 +5148,9 @@ async function saveVeiculo(evt){
     status: document.getElementById('vl_status').value,
     proxima_manutencao_data: document.getElementById('vl_prox_manut_data').value||null,
     proxima_manutencao_km: parseFloat(document.getElementById('vl_prox_manut_km').value)||null,
+    seguro_apolice: document.getElementById('vl_seguro_apolice').value.trim()||null,
+    seguro_franquia: parseBRL(document.getElementById('vl_seguro_franquia').value)||null,
+    rastreador: document.getElementById('vl_rastreador').value === 'true',
     obs: document.getElementById('vl_obs').value.trim()||null
   };
   if(state.editingVeiculoId){
@@ -5254,7 +5293,10 @@ function renderVeiculoFicha(id){
 
     <div class="section-title">
       <h3>Histórico de condutores</h3>
-      ${!cond ? `<button class="btn btn-primary btn-sm" onclick="abrirModalAtribuirCondutor('${id}')">+ Atribuir condutor</button>` : `<button class="btn btn-outline btn-sm" onclick="encerrarCondutorAtual('${id}')">Encerrar atribuição atual</button>`}
+      <div style="display:flex;gap:8px;">
+        ${cond ? `<button class="btn btn-outline btn-sm" onclick="switchView('frota-termo');setTimeout(()=>renderTermoCondutor('${id}'),50)">📄 Termo do Condutor</button>` : ''}
+        ${!cond ? `<button class="btn btn-primary btn-sm" onclick="abrirModalAtribuirCondutor('${id}')">+ Atribuir condutor</button>` : `<button class="btn btn-outline btn-sm" onclick="encerrarCondutorAtual('${id}')">Encerrar atribuição atual</button>`}
+      </div>
     </div>
     <div class="card" style="padding:0;overflow-x:auto;">
       <table><thead><tr><th>Colaborador</th><th>Início</th><th>Fim</th><th>Observações</th></tr></thead>
@@ -5380,73 +5422,271 @@ function getFleetAlerts(){
 }
 
 // ---------- FROTA: TERMO DO CONDUTOR ----------
-const TERMO_CONDUTOR_TITULO = 'TERMO DE RESPONSABILIDADE DO CONDUTOR DE VEÍCULO';
+const TERMO_CONDUTOR_TITULO = 'TERMO DE RESPONSABILIDADE E ENTREGA DE VEÍCULO';
+const TERMO_CONDUTOR_SUBTITULO = 'Cessão de veículo da empresa a empregado condutor — termo de uso, guarda e autorização de desconto salarial';
+const EMPRESA_NOME = 'RD TELECOM LTDA.';
+const EMPRESA_CNPJ = '07.426.902/0001-33';
+const EMPRESA_ENDERECO = 'Av. Santos, 398, Quadra 17, Lote 07, Jardim Novo Mundo, CEP 74715-450, Goiânia/GO';
+
+const TERMO_CONDUTOR_INTRO = 'Pelo presente instrumento particular, de um lado a EMPRESA acima identificada, e de outro lado o(a) EMPREGADO(A) CONDUTOR(A) abaixo identificado(a), têm entre si justo e acertado o presente TERMO DE RESPONSABILIDADE DE CONDUTOR ("Termo"), que se regerá pela Consolidação das Leis do Trabalho (CLT), em especial o art. 462; pelo Código de Trânsito Brasileiro (CTB – Lei nº 9.503/1997); pela Lei Geral de Proteção de Dados (LGPD – Lei nº 13.709/2018); e pela Convenção Coletiva de Trabalho aplicável à categoria e à base territorial do EMPREGADO, celebrada com o sindicato profissional respectivo e o correspondente sindicato patronal, cujas disposições mais favoráveis ou mais específicas prevalecem sobre este Termo, mediante as cláusulas seguintes:';
+
 const TERMO_CONDUTOR_SECOES = [
-  { titulo: '1. Das partes e do objeto', texto: 'Pelo presente Termo de Responsabilidade, a empresa RD TELECOM LTDA., inscrita no CNPJ sob o nº 07.426.902/0001-33, doravante denominada "EMPRESA", cede ao empregado abaixo identificado, doravante denominado "CONDUTOR", o uso de veículo de sua propriedade ou posse, para fins exclusivamente relacionados ao exercício de suas atividades laborais, nos termos e condições estabelecidos neste instrumento.' },
-  { titulo: '2. Da habilitação e condições para condução', texto: '2.1. O CONDUTOR declara possuir Carteira Nacional de Habilitação (CNH) válida e compatível com a categoria do veículo cedido, comprometendo-se a comunicar imediatamente à EMPRESA qualquer suspensão, cassação ou vencimento de sua CNH.\n2.2. É expressamente proibida a condução do veículo por terceiros não autorizados pela EMPRESA, ainda que familiares ou colegas de trabalho.\n2.3. O CONDUTOR compromete-se a não conduzir o veículo sob efeito de álcool ou substâncias entorpecentes, nos termos da Lei nº 9.503/1997 (Código de Trânsito Brasileiro).' },
-  { titulo: '3. Do uso do veículo', texto: '3.1. O veículo destina-se exclusivamente ao uso em atividades relacionadas ao trabalho, sendo vedado o uso para fins particulares, salvo autorização expressa e por escrito da EMPRESA.\n3.2. O CONDUTOR obriga-se a zelar pela conservação do veículo, mantendo-o em boas condições de uso, higiene e segurança, comunicando imediatamente à EMPRESA qualquer problema mecânico, elétrico ou de segurança identificado.\n3.3. O CONDUTOR deverá respeitar integralmente as normas de trânsito previstas no Código de Trânsito Brasileiro e legislação correlata.' },
-  { titulo: '4. Das multas e infrações de trânsito', texto: '4.1. Nos termos do art. 257, §§7º e 8º, do Código de Trânsito Brasileiro, a responsabilidade pela infração cometida na condução do veículo poderá ser atribuída ao CONDUTOR identificado no momento da autuação.\n4.2. O CONDUTOR autoriza, desde já, que a EMPRESA proceda à identificação do condutor responsável junto ao órgão de trânsito competente, sempre que a infração for atribuível à sua conduta na direção do veículo.\n4.3. As multas decorrentes de infrações cometidas pelo CONDUTOR durante o uso do veículo serão de sua exclusiva responsabilidade, autorizando o CONDUTOR, desde já, o desconto do valor correspondente em folha de pagamento, mediante prévia comunicação e comprovação da infração.' },
-  { titulo: '5. De acidentes, sinistros e danos ao veículo', texto: '5.1. Em caso de acidente, colisão, furto, roubo ou qualquer sinistro envolvendo o veículo, o CONDUTOR obriga-se a comunicar imediatamente à EMPRESA e, quando aplicável, à autoridade policial competente, adotando as providências necessárias para registro da ocorrência (Boletim de Ocorrência).\n5.2. Responsabilidade por dolo: nos termos do art. 462, §1º, da CLT (Decreto-Lei nº 5.452/1943), em caso de dano ao veículo causado por conduta dolosa do CONDUTOR (ação ou omissão intencional, incluindo condução sob efeito de álcool/drogas, uso não autorizado do veículo, fuga do local do sinistro, ou grave e evidente inobservância das normas de trânsito), a EMPRESA poderá descontar da remuneração do CONDUTOR o valor correspondente ao dano comprovado, respeitados os limites que preservem o mínimo existencial do trabalhador.\n5.3. Responsabilidade por culpa: em caso de dano causado por mera negligência, imprudência ou imperícia do CONDUTOR, sem dolo, a EMPRESA poderá descontar da remuneração do CONDUTOR o valor correspondente ao dano comprovado, desde que exista prévio acordo entre as partes — o que o CONDUTOR expressamente autoriza, desde já, mediante a assinatura deste Termo, nos termos do art. 462, §1º, da CLT.\n5.4. Os descontos referidos nos itens 5.2 e 5.3 observarão os seguintes limites e condições: (a) o desconto será limitado ao valor efetivamente comprovado do dano, mediante orçamento(s) e/ou nota fiscal de reparo; (b) o desconto não poderá comprometer a subsistência do CONDUTOR, podendo ser parcelado em valor compatível com sua renda, observado o que for mais benéfico previsto na Convenção Coletiva de Trabalho (CCT) aplicável; (c) o CONDUTOR será previamente comunicado, por escrito, sobre o valor apurado e a forma de desconto, podendo apresentar defesa no prazo que vier a ser fixado pela EMPRESA antes da efetivação; (d) havendo cobertura de seguro, o desconto restringir-se-á à franquia e/ou valores não cobertos pela apólice.\n5.5. Este Termo não afasta a aplicação de disposições mais favoráveis ao CONDUTOR eventualmente previstas na Convenção Coletiva de Trabalho (CCT) vigente da categoria profissional a que pertence, as quais prevalecerão sobre as cláusulas deste instrumento, nos termos do art. 620 da CLT.' },
-  { titulo: '6. Da devolução do veículo', texto: '6.1. O veículo deverá ser devolvido à EMPRESA sempre que solicitado, ou ao término do vínculo de trabalho ou da necessidade de uso, nas mesmas condições em que foi recebido, ressalvado o desgaste natural pelo uso regular.\n6.2. Na devolução, será realizada vistoria conjunta entre EMPRESA e CONDUTOR, com registro fotográfico do estado do veículo.' },
-  { titulo: '7. Disposições gerais', texto: '7.1. Este Termo não gera qualquer forma de posse ou propriedade do veículo em favor do CONDUTOR, tratando-se de mera cessão de uso para fins laborais.\n7.2. O descumprimento das obrigações previstas neste Termo poderá acarretar sanções disciplinares nos termos da legislação trabalhista, sem prejuízo da responsabilização civil e, se for o caso, criminal do CONDUTOR.\n7.3. Este Termo é regido pela Consolidação das Leis do Trabalho (CLT), pelo Código de Trânsito Brasileiro (Lei nº 9.503/1997), pelo Código Civil (Lei nº 10.406/2002) e pela Convenção Coletiva de Trabalho (CCT) aplicável à categoria profissional do CONDUTOR.' }
+  { titulo: 'CLÁUSULA 1ª — DO OBJETO', texto: '1.1. O presente Termo formaliza a entrega, pela EMPRESA ao EMPREGADO, de veículo automotor de propriedade da EMPRESA (ou por ela locado/arrendado), destinado exclusivamente à execução das atividades laborais do CONDUTOR, definindo direitos, deveres e responsabilidades de ambas as partes quanto ao uso, guarda, conservação, circulação e eventual reparação de danos ao bem.\n1.2. A disponibilização do veículo constitui ferramenta de trabalho, cedida em regime de comodato de uso funcional, não possuindo natureza salarial, não se incorporando à remuneração do EMPREGADO e não gerando habitualidade, ainda que o uso se prolongue no tempo, nos termos do art. 458, §2º, da CLT e da jurisprudência consolidada do TST quanto a utilidades fornecidas como instrumento de trabalho.\n1.3. O uso do veículo para fins estritamente particulares é vedado, salvo autorização prévia, específica e por escrito da EMPRESA, hipótese em que as responsabilidades aqui pactuadas permanecem plenamente aplicáveis.' },
+  { titulo: 'CLÁUSULA 2ª — IDENTIFICAÇÃO DO VEÍCULO E VISTORIA DE ENTREGA', texto: '2.1. O veículo ora cedido possui as características identificadas no quadro acima, cujo estado de conservação deve ser conferido conjuntamente por EMPRESA e CONDUTOR no ato da entrega ("vistoria de saída"), sem ressalvas além das expressamente anotadas neste Termo e em seus anexos fotográficos.\n2.2. Avarias, riscos, desgastes ou situações preexistentes constatadas na vistoria de entrega deverão ser descritas em anexo específico (item, descrição da avaria/observação e localização/foto).\n2.3. O CONDUTOR declara ter recebido o veículo em perfeitas condições de uso e funcionamento, ressalvado o disposto no item 2.2, comprometendo-se a devolvê-lo, ao término da cessão, no mesmo estado, admitido o desgaste natural decorrente do uso regular e do decurso do tempo.\n2.4. Recomenda-se a realização de vistoria fotográfica/em vídeo, com data e hora, arquivada por ambas as partes, a fim de resguardar direitos em eventual divergência futura.' },
+  { titulo: 'CLÁUSULA 3ª — DAS OBRIGAÇÕES DO CONDUTOR', texto: '3.1. O CONDUTOR obriga-se a:\na) utilizar o veículo exclusivamente para o desempenho de suas atividades profissionais, respeitando os limites de sua função;\nb) conduzir o veículo pessoalmente, sendo vedado permitir que terceiros — inclusive familiares, colegas de trabalho não autorizados ou qualquer outra pessoa — o conduzam, salvo autorização expressa e por escrito da EMPRESA;\nc) possuir Carteira Nacional de Habilitação (CNH) válida e compatível com a categoria do veículo, comunicando imediatamente à EMPRESA qualquer suspensão, cassação, perda de pontos que coloque a habilitação em risco, exame de aptidão pendente ou qualquer outra restrição ao exercício do direito de dirigir;\nd) zelar pela guarda, conservação, limpeza e manutenção preventiva do veículo, comunicando prontamente à EMPRESA qualquer irregularidade mecânica, elétrica ou de segurança, bem como a necessidade de revisões, troca de óleo, pneus e demais manutenções programadas pela fabricante;\ne) respeitar integralmente a legislação de trânsito vigente, em especial as disposições do Código de Trânsito Brasileiro (Lei nº 9.503/1997), seus regulamentos e resoluções do CONTRAN;\nf) não conduzir o veículo sob efeito de álcool, drogas ilícitas ou qualquer substância psicoativa que comprometa a capacidade de direção, nem enquanto acometido de sonolência, mal-estar ou qualquer condição de saúde incompatível com a condução segura;\ng) não utilizar o veículo para transporte remunerado de pessoas ou cargas de terceiros, para fins de competição, rebaixamento, ou qualquer atividade que desvirtue sua finalidade laboral, nem para tracionar reboques ou transportar cargas além da capacidade e finalidade do veículo, salvo expressa determinação da EMPRESA;\nh) manter o veículo trancado e em local seguro quando não estiver em uso, adotando as cautelas razoáveis para evitar furto, roubo ou depredação, e acionar imediatamente a EMPRESA e a autoridade policial em caso de sinistro;\ni) comunicar à EMPRESA, no prazo máximo de 24 (vinte e quatro) horas, qualquer acidente, avaria, furto, roubo, incêndio, alagamento ou outro sinistro envolvendo o veículo, ainda que sem culpa aparente, e no mesmo prazo qualquer autuação, multa, notificação de infração ou intimação de órgão de trânsito recebida em razão da condução do veículo;\nj) submeter o veículo às vistorias periódicas determinadas pela EMPRESA e permitir a instalação e o funcionamento de eventuais dispositivos de rastreamento/telemetria.' },
+  { titulo: 'CLÁUSULA 4ª — DAS INFRAÇÕES E MULTAS DE TRÂNSITO', texto: '4.1. Nos termos do art. 257, §§ 7º e 8º, do CTB, a responsabilidade pela infração de trânsito cometida na condução do veículo recai sobre o condutor identificado, cabendo à EMPRESA, na qualidade de proprietária, apenas o dever legal de indicar o condutor infrator ao órgão de trânsito, quando exigido.\n4.2. Constatada, mediante identificação formal do condutor no boletim de ocorrência, no auto de infração ou por indicação da própria EMPRESA, a autoria da infração pelo EMPREGADO, o valor da multa aplicada, bem como eventuais despesas administrativas diretamente decorrentes (ex.: taxas de reboque, pátio, notificação), poderá ser objeto de desconto salarial, observado o procedimento de apuração previsto na Cláusula 6ª e o limite de desconto previsto na Cláusula 7ª deste Termo.\n4.3. Pontuações e eventuais processos de suspensão do direito de dirigir decorrentes de infrações de responsabilidade do EMPREGADO são de sua exclusiva responsabilidade pessoal, não gerando qualquer obrigação de indenização ou estabilidade a cargo da EMPRESA.' },
+  { titulo: 'CLÁUSULA 5ª — DE SINISTROS, DANOS, FURTO E ROUBO', texto: '5.1. Em caso de acidente, colisão, avaria, incêndio, alagamento, furto ou roubo do veículo, o CONDUTOR deverá: (i) preservar sua integridade física e a de terceiros, acionando socorro se necessário; (ii) comunicar imediatamente a EMPRESA; (iii) lavrar Boletim de Ocorrência policial, sempre que aplicável; (iv) não admitir culpa perante terceiros ou seguradora sem orientação da EMPRESA; e (v) colaborar com a regularização junto à seguradora e às autoridades competentes.\n5.2. As despesas com a obtenção de Boletim de Ocorrência e demais documentos necessários à regularização do sinistro serão suportadas pela EMPRESA, ressalvado o direito de ressarcimento caso a apuração de responsabilidade conclua pela culpa ou dolo do EMPREGADO.\n5.3. O ressarcimento de danos ao veículo (incluindo o valor da franquia do seguro, quando houver, ou o custo do reparo/substituição, quando não segurado ou quando o dano não for coberto pela apólice) somente será exigido do EMPREGADO quando restar comprovada sua culpa (inclusive na modalidade de negligência, imprudência ou imperícia) ou dolo na causação do evento, mediante o procedimento de apuração da Cláusula 6ª.' },
+  { titulo: 'CLÁUSULA 6ª — DO PROCEDIMENTO DE APURAÇÃO DE RESPONSABILIDADE', texto: '6.1. Nenhum desconto relacionado a multa, sinistro, furto, roubo ou avaria será efetivado sem prévia apuração formal, assegurado ao EMPREGADO o contraditório e a ampla defesa, observado o seguinte rito mínimo:\na) a EMPRESA notificará o EMPREGADO, por escrito (inclusive por meio eletrônico com confirmação de recebimento), descrevendo o fato, a data, o valor estimado do dano/multa e a conduta que lhe é imputada;\nb) o EMPREGADO terá o prazo de até 5 (cinco) dias úteis, contados do recebimento da notificação, para apresentar manifestação escrita, com as provas e argumentos que entender pertinentes, sem prejuízo de prazo diverso e mais favorável eventualmente previsto na Convenção Coletiva de Trabalho aplicável, que prevalecerá sobre este Termo quando mais benéfico ao EMPREGADO;\nc) a EMPRESA analisará a manifestação e as provas disponíveis (boletim de ocorrência, laudos, fotografias, registros de telemetria/rastreamento, testemunhas, entre outros) e proferirá decisão fundamentada, informando ao EMPREGADO o resultado da apuração;\nd) caso a apuração conclua pela ausência de culpa ou dolo do EMPREGADO — por exemplo, em casos de caso fortuito, força maior, defeito mecânico oculto, ação de terceiro ou culpa exclusiva de terceiro —, nenhum desconto será realizado;\ne) da decisão da EMPRESA, o EMPREGADO poderá recorrer à instância prevista na Convenção Coletiva de Trabalho ou buscar a via sindical e/ou judicial competente.\n6.2. O desconto, quando cabível, somente será implementado após a conclusão do procedimento acima e mediante a assinatura, pelo EMPREGADO, de autorização específica de desconto (Anexo II), ressalvada a hipótese de dolo comprovado, em que a autorização prévia não é condição de validade do desconto, nos termos do art. 462, §1º, da CLT.' },
+  { titulo: 'CLÁUSULA 7ª — DA AUTORIZAÇÃO DE DESCONTO EM FOLHA DE PAGAMENTO', texto: '7.1. O EMPREGADO, de forma livre, expressa e consciente, autoriza a EMPRESA a descontar de sua remuneração os valores relativos a:\na) multas de trânsito cuja autoria lhe seja atribuída na forma da Cláusula 4ª;\nb) reparo, franquia de seguro ou substituição do veículo, em caso de dano, avaria, furto ou roubo cuja culpa ou dolo lhe seja atribuída na forma da Cláusula 5ª e apurada conforme a Cláusula 6ª;\nc) valores de multas de trânsito ou encargos administrativos comprovadamente pagos pela EMPRESA por força de infração de responsabilidade do EMPREGADO.\n7.2. Fundamento legal. O presente desconto é lastreado no art. 462, caput e §1º, da CLT, segundo o qual é lícito o desconto salarial decorrente de dano causado pelo empregado quando (i) essa possibilidade tiver sido acordada entre as partes, como ora se faz, ou (ii) na ocorrência de dolo do empregado, hipótese em que a autorização prévia é dispensável. Nos casos de mera culpa (negligência, imprudência ou imperícia), o desconto depende desta autorização prévia e expressa e da apuração de que trata a Cláusula 6ª.\n7.3. Limite do desconto. Em nenhuma hipótese o desconto mensal decorrente deste Termo poderá comprometer o salário mínimo legal do EMPREGADO, tampouco superar o limite de 30% (trinta por cento) da remuneração mensal líquida, salvo percentual diverso, mais restritivo ou mais favorável, estabelecido na Convenção Coletiva de Trabalho aplicável, que prevalecerá sobre este Termo. Sempre que o valor total do dano exceder esse limite, o desconto será parcelado nos meses subsequentes, sem incidência de juros ou correção que configure caráter punitivo.\n7.4. É vedado o desconto de valores não comprovados documentalmente (nota fiscal, orçamento, laudo pericial ou auto de infração), sendo assegurado ao EMPREGADO o acesso a toda a documentação que fundamente o valor cobrado.\n7.5. Rescisão contratual. Havendo débito remanescente por ocasião da rescisão do contrato de trabalho, a compensação nas verbas rescisórias observará os mesmos limites e condições desta cláusula, sendo vedada a retenção da totalidade das verbas de natureza salarial mínima e das verbas indenizatórias inerentes à rescisão (aviso prévio, FGTS e multa de 40%, salvo compensação judicialmente admitida).' },
+  { titulo: 'CLÁUSULA 8ª — DO SEGURO', texto: '8.1. Sempre que o veículo estiver segurado, a EMPRESA manterá a apólice vigente e informará ao EMPREGADO o valor da franquia e as condições de acionamento do sinistro.\n8.2. O EMPREGADO obriga-se a colaborar integralmente com a seguradora, fornecendo documentos e informações verídicas, sob pena de responder por eventual negativa de cobertura motivada por conduta a ele exclusivamente imputável (declaração falsa, fuga do local, condução sem CNH válida, embriaguez, entre outras).' },
+  { titulo: 'CLÁUSULA 9ª — DA PROTEÇÃO DE DADOS (LGPD) E RASTREAMENTO', texto: '9.1. O veículo poderá conter dispositivo de rastreamento/telemetria, cuja finalidade é exclusivamente a gestão de frota, segurança patrimonial e apuração de responsabilidade em sinistros, nos termos deste Termo.\n9.2. O tratamento de dados pessoais e de geolocalização do EMPREGADO decorrente do uso do dispositivo observará a Lei nº 13.709/2018 (LGPD), sendo os dados tratados com base no legítimo interesse e no cumprimento de obrigações legais e contratuais da EMPRESA, vedado o uso para fins de monitoramento da vida privada do EMPREGADO fora do exercício da função ou em horário não laboral, salvo quando o veículo permanecer sob a guarda do EMPREGADO fora do expediente.' },
+  { titulo: 'CLÁUSULA 10ª — DA DEVOLUÇÃO DO VEÍCULO', texto: '10.1. O EMPREGADO obriga-se a devolver o veículo à EMPRESA imediatamente ao término da cessão de uso — por rescisão contratual, mudança de função, afastamento, licença ou a qualquer tempo, mediante solicitação da EMPRESA — no estado em que o recebeu, ressalvado o desgaste natural decorrente do uso regular.\n10.2. Na devolução, será realizada nova vistoria conjunta, registrando-se eventuais avarias não constantes da vistoria de entrega (Cláusula 2ª), as quais serão submetidas ao procedimento de apuração da Cláusula 6ª para fins de eventual desconto.' },
+  { titulo: 'CLÁUSULA 11ª — DISPOSIÇÕES GERAIS', texto: '11.1. Este Termo não gera, em nenhuma hipótese, cessão de posse ou propriedade do veículo ao EMPREGADO, tratando-se de mero instrumento de trabalho.\n11.2. Prevalecerão sobre este Termo as disposições da Convenção Coletiva de Trabalho vigente à época do fato, celebrada com o sindicato representativo da categoria e base territorial do EMPREGADO, sempre que mais favoráveis a este ou quando estabelecerem procedimento, prazo ou limite de desconto diverso, cabendo à EMPRESA manter-se atualizada quanto ao instrumento coletivo em vigor.\n11.3. O descumprimento das obrigações previstas neste Termo poderá ensejar, além das consequências patrimoniais aqui previstas, a aplicação de medidas disciplinares proporcionais e graduais (advertência, suspensão), assegurado o direito de defesa, sem prejuízo de eventual dispensa por justa causa nas hipóteses do art. 482 da CLT, quando cabível.\n11.4. Este Termo entra em vigor na data de sua assinatura e permanece válido durante todo o período em que o veículo estiver sob a guarda do EMPREGADO, podendo ser atualizado sempre que houver alteração relevante nas normas legais ou convencionais aplicáveis.\n11.5. As partes elegem o foro da Comarca/Seção Judiciária do local da prestação de serviços para dirimir eventuais controvérsias decorrentes deste Termo, sem prejuízo da competência da Justiça do Trabalho para as matérias de natureza trabalhista.' }
 ];
-function renderTermoCondutor(){
+
+function condutorInfoParaTermo(vehicleId){
+  if(!vehicleId) return { vehicle: null, employee: null };
+  const vehicle = state.vehicles.find(v=>v.id===vehicleId);
+  const cond = vehicle ? condutorAtualDoVeiculo(vehicleId) : null;
+  return { vehicle, employee: cond ? cond.employee : null };
+}
+function linhaOuBranco(valor, tamanho){
+  tamanho = tamanho || 40;
+  return valor ? String(valor) : '_'.repeat(tamanho);
+}
+function renderTermoCondutor(vehicleId){
+  vehicleId = vehicleId !== undefined ? vehicleId : state.termoCondutorVehicleId;
+  state.termoCondutorVehicleId = vehicleId || null;
+  const { vehicle, employee } = condutorInfoParaTermo(vehicleId);
   const el = document.getElementById('termoCondutorContent');
   if(!el) return;
+
+  const cnh = employee ? [employee.cnh_numero, employee.cnh_categoria, employee.cnh_validade ? 'val. '+fmtDate(employee.cnh_validade) : null].filter(Boolean).join(' / ') : '';
+  const cargoMatricula = employee ? [employee.cargo, employee.matricula ? 'Mat. '+employee.matricula : null].filter(Boolean).join(' / ') : '';
+
+  let seletorHtml = '';
+  if(state.vehicles.length > 0){
+    seletorHtml = `
+      <div class="form-field" style="max-width:420px;margin-bottom:22px;">
+        <label>Gerar preenchido para o veículo/condutor</label>
+        <select onchange="renderTermoCondutor(this.value||null)">
+          <option value="">— Modelo em branco —</option>
+          ${state.vehicles.map(v=>`<option value="${v.id}" ${v.id===vehicleId?'selected':''}>${escapeHtml(v.placa)} — ${escapeHtml(v.marca||'')} ${escapeHtml(v.modelo||'')}</option>`).join('')}
+        </select>
+      </div>`;
+  }
+
+  const identificacaoHtml = `
+    <div style="border:1px solid var(--border);border-radius:8px;padding:16px 18px;margin-bottom:20px;font-size:12.5px;line-height:1.9;">
+      <strong>EMPRESA:</strong> ${escapeHtml(EMPRESA_NOME)}<br>
+      <strong>CNPJ:</strong> ${escapeHtml(EMPRESA_CNPJ)}<br>
+      <strong>Endereço:</strong> ${escapeHtml(EMPRESA_ENDERECO)}<br>
+      <strong>Representante legal:</strong> ${linhaOuBranco(null,30)}<br><br>
+      <strong>EMPREGADO(A) CONDUTOR(A):</strong> ${employee ? escapeHtml(employee.nome) : linhaOuBranco(null,40)}<br>
+      <strong>CPF:</strong> ${employee ? escapeHtml(employee.cpf||'—') : linhaOuBranco(null,20)}<br>
+      <strong>CNH nº / Categoria / Validade:</strong> ${cnh ? escapeHtml(cnh) : linhaOuBranco(null,30)}<br>
+      <strong>Cargo / Função / Matrícula:</strong> ${cargoMatricula ? escapeHtml(cargoMatricula) : linhaOuBranco(null,30)}<br>
+      <strong>Sindicato representativo da categoria:</strong> ${employee?.sindicato ? escapeHtml(employee.sindicato) : linhaOuBranco(null,25)}
+    </div>`;
+
+  const veiculoHtml = `
+    <div style="border:1px solid var(--border);border-radius:8px;padding:16px 18px;margin-bottom:20px;">
+      <h4 style="font-size:13px;margin-bottom:10px;">Identificação do veículo (Cláusula 2ª)</h4>
+      <div class="form-grid" style="font-size:12.5px;">
+        <div><strong>Marca/Modelo:</strong> ${vehicle ? escapeHtml((vehicle.marca||'')+' '+(vehicle.modelo||'')) : linhaOuBranco(null,25)}</div>
+        <div><strong>Ano Fab./Modelo:</strong> ${vehicle?.ano ? escapeHtml(vehicle.ano) : linhaOuBranco(null,15)}</div>
+        <div><strong>Placa:</strong> ${vehicle ? escapeHtml(vehicle.placa) : linhaOuBranco(null,12)}</div>
+        <div><strong>RENAVAM:</strong> ${vehicle?.renavam ? escapeHtml(vehicle.renavam) : linhaOuBranco(null,15)}</div>
+        <div><strong>Cor:</strong> ${vehicle?.cor ? escapeHtml(vehicle.cor) : linhaOuBranco(null,12)}</div>
+        <div><strong>Chassi:</strong> ${vehicle?.chassi ? escapeHtml(vehicle.chassi) : linhaOuBranco(null,20)}</div>
+        <div><strong>Km na entrega:</strong> ${vehicle?.km_atual!=null ? vehicle.km_atual : linhaOuBranco(null,10)}</div>
+        <div><strong>Nível de combustível:</strong> ${vehicle?.nivel_combustivel ? escapeHtml(vehicle.nivel_combustivel) : linhaOuBranco(null,12)}</div>
+        <div><strong>Apólice de seguro / franquia:</strong> ${vehicle?.seguro_apolice ? escapeHtml(vehicle.seguro_apolice)+(vehicle.seguro_franquia?' / '+formatBRL(vehicle.seguro_franquia):'') : linhaOuBranco(null,25)}</div>
+        <div><strong>Rastreador/telemetria:</strong> ${vehicle ? (vehicle.rastreador?'Sim':'Não') : linhaOuBranco(null,6)}</div>
+      </div>
+    </div>`;
+
   el.innerHTML = `
-    <h2 style="text-align:center;font-size:16px;margin-bottom:24px;">${TERMO_CONDUTOR_TITULO}</h2>
-    ${TERMO_CONDUTOR_SECOES.map(s=>`
+    ${seletorHtml}
+    <h2 style="text-align:center;font-size:16px;margin-bottom:4px;">${TERMO_CONDUTOR_TITULO}</h2>
+    <p style="text-align:center;font-size:12px;color:var(--ink-soft);margin-bottom:20px;">${TERMO_CONDUTOR_SUBTITULO}</p>
+    ${identificacaoHtml}
+    <p style="font-size:12.5px;line-height:1.7;color:var(--ink-soft);margin-bottom:20px;">${escapeHtml(TERMO_CONDUTOR_INTRO)}</p>
+    ${TERMO_CONDUTOR_SECOES.map((s,idx)=>`
       <div style="margin-bottom:18px;">
         <h4 style="font-size:13px;margin-bottom:6px;">${escapeHtml(s.titulo)}</h4>
+        ${idx===1 ? veiculoHtml : ''}
         <p style="font-size:12.5px;line-height:1.7;color:var(--ink-soft);white-space:pre-line;">${escapeHtml(s.texto)}</p>
       </div>`).join('')}
+    <p style="font-size:12.5px;line-height:1.7;color:var(--ink-soft);margin-top:24px;">E, por estarem de acordo com todas as cláusulas e condições deste Termo, as partes o assinam em 2 (duas) vias de igual teor e forma, juntamente com 2 (duas) testemunhas.</p>
+    <p style="font-size:12.5px;margin-top:10px;">Local e data: ${linhaOuBranco(null,50)}</p>
     <div style="margin-top:40px;display:flex;justify-content:space-between;gap:40px;font-size:12.5px;">
-      <div style="flex:1;text-align:center;border-top:1px solid var(--border);padding-top:8px;">EMPRESA</div>
-      <div style="flex:1;text-align:center;border-top:1px solid var(--border);padding-top:8px;">CONDUTOR</div>
+      <div style="flex:1;text-align:center;border-top:1px solid var(--border);padding-top:8px;">EMPRESA (representante legal)</div>
+      <div style="flex:1;text-align:center;border-top:1px solid var(--border);padding-top:8px;">EMPREGADO(A) CONDUTOR(A)</div>
+    </div>
+    <div style="margin-top:24px;font-size:12.5px;">
+      Testemunhas:<br><br>
+      1) ${linhaOuBranco(null,35)} CPF: ${linhaOuBranco(null,18)}<br><br>
+      2) ${linhaOuBranco(null,35)} CPF: ${linhaOuBranco(null,18)}
+    </div>
+    <div style="margin-top:30px;font-size:12px;color:var(--ink-faint);border-top:1px solid var(--border);padding-top:14px;">
+      <strong>ANEXO I</strong> — Vistoria fotográfica (anexar imagens datadas do veículo na entrega e na devolução — ver fotos cadastradas na ficha do veículo).<br><br>
+      <strong>ANEXO II</strong> — Autorização específica de desconto (a ser preenchida e assinada individualmente, para cada evento de desconto, após a conclusão do procedimento de apuração previsto na Cláusula 6ª, com indicação do valor exato, do número de parcelas e do fato gerador).
     </div>`;
 }
-function imprimirTermoCondutor(){
+function imprimirTermoCondutor(vehicleId){
+  vehicleId = vehicleId !== undefined ? vehicleId : state.termoCondutorVehicleId;
   if(typeof window.jspdf === 'undefined'){ showToast('Não foi possível carregar o gerador de PDF (verifique sua conexão e tente novamente).'); return; }
+  const { vehicle, employee } = condutorInfoParaTermo(vehicleId);
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit:'mm', format:'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 18;
   const maxWidth = pageWidth - margin*2;
-  let y = 20;
+  let paginaAtual = 1;
 
+  function cabecalho(){
+    try{ doc.addImage(LOGO_SRC, 'PNG', margin, 8, 22, 22*(117/426)); }catch(e){}
+    doc.setFontSize(7.5); doc.setTextColor(140,140,140);
+    doc.text(EMPRESA_NOME, pageWidth-margin, 12, { align:'right' });
+    doc.setDrawColor(200); doc.setLineWidth(0.2);
+    doc.line(margin, 17, pageWidth-margin, 17);
+    doc.setTextColor(0,0,0);
+  }
+  function rodape(){
+    doc.setFontSize(7.5); doc.setTextColor(140,140,140);
+    doc.text(`Página ${paginaAtual}`, pageWidth/2, pageHeight-10, { align:'center' });
+    doc.setTextColor(0,0,0);
+  }
+  function novaPagina(){
+    rodape();
+    doc.addPage();
+    paginaAtual++;
+    cabecalho();
+    return 26;
+  }
+
+  cabecalho();
+  let y = 26;
   doc.setFont('helvetica','bold'); doc.setFontSize(13);
   doc.text(TERMO_CONDUTOR_TITULO, pageWidth/2, y, { align:'center' });
-  y += 12;
+  y += 6;
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(90,90,90);
+  const subtituloLinhas = doc.splitTextToSize(TERMO_CONDUTOR_SUBTITULO, maxWidth);
+  subtituloLinhas.forEach(l=>{ doc.text(l, pageWidth/2, y, { align:'center' }); y += 4; });
+  doc.setTextColor(0,0,0);
+  y += 6;
 
-  TERMO_CONDUTOR_SECOES.forEach(s=>{
-    if(y > pageHeight - 30){ doc.addPage(); y = 20; }
+  const cnh = employee ? [employee.cnh_numero, employee.cnh_categoria, employee.cnh_validade ? 'val. '+fmtDate(employee.cnh_validade) : null].filter(Boolean).join(' / ') : '';
+  const cargoMatricula = employee ? [employee.cargo, employee.matricula ? 'Mat. '+employee.matricula : null].filter(Boolean).join(' / ') : '';
+  const identCampos = [
+    ['EMPRESA:', EMPRESA_NOME],
+    ['CNPJ:', EMPRESA_CNPJ],
+    ['Endereço:', EMPRESA_ENDERECO],
+    ['Representante legal:', linhaOuBranco(null,30)],
+    ['', ''],
+    ['EMPREGADO(A) CONDUTOR(A):', employee ? employee.nome : linhaOuBranco(null,40)],
+    ['CPF:', employee ? (employee.cpf||'—') : linhaOuBranco(null,20)],
+    ['CNH nº / Categoria / Validade:', cnh || linhaOuBranco(null,30)],
+    ['Cargo / Função / Matrícula:', cargoMatricula || linhaOuBranco(null,30)],
+    ['Sindicato representativo:', employee?.sindicato || linhaOuBranco(null,25)]
+  ];
+  doc.setFontSize(9);
+  identCampos.forEach(([label, valor])=>{
+    if(!label && !valor){ y += 2; return; }
+    doc.setFont('helvetica','bold'); doc.text(label, margin, y);
+    doc.setFont('helvetica','normal');
+    const linhas = doc.splitTextToSize(String(valor), maxWidth - 55);
+    doc.text(linhas, margin+55, y);
+    y += 5 * linhas.length;
+  });
+  y += 6;
+
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5);
+  doc.splitTextToSize(TERMO_CONDUTOR_INTRO, maxWidth).forEach(linha=>{
+    if(y > pageHeight - 20) y = novaPagina();
+    doc.text(linha, margin, y);
+    y += 4.4;
+  });
+  y += 6;
+
+  const veiculoCampos = [
+    ['Marca/Modelo:', vehicle ? `${vehicle.marca||''} ${vehicle.modelo||''}` : linhaOuBranco(null,25)],
+    ['Ano:', vehicle?.ano || linhaOuBranco(null,10)],
+    ['Placa:', vehicle?.placa || linhaOuBranco(null,12)],
+    ['RENAVAM:', vehicle?.renavam || linhaOuBranco(null,15)],
+    ['Cor:', vehicle?.cor || linhaOuBranco(null,10)],
+    ['Chassi:', vehicle?.chassi || linhaOuBranco(null,20)],
+    ['Km na entrega:', vehicle?.km_atual!=null ? String(vehicle.km_atual) : linhaOuBranco(null,10)],
+    ['Seguro/franquia:', vehicle?.seguro_apolice ? vehicle.seguro_apolice+(vehicle.seguro_franquia?' / '+formatBRL(vehicle.seguro_franquia):'') : linhaOuBranco(null,20)],
+    ['Rastreador:', vehicle ? (vehicle.rastreador?'Sim':'Não') : linhaOuBranco(null,6)]
+  ];
+
+  TERMO_CONDUTOR_SECOES.forEach((s,idx)=>{
+    if(y > pageHeight - 30) y = novaPagina();
     doc.setFont('helvetica','bold'); doc.setFontSize(10.5);
     doc.text(s.titulo, margin, y);
     y += 6;
+
+    if(idx===1){
+      doc.setFont('helvetica','normal'); doc.setFontSize(8.5);
+      veiculoCampos.forEach(([label,valor])=>{
+        if(y > pageHeight - 20) y = novaPagina();
+        doc.setFont('helvetica','bold'); doc.text(label, margin, y);
+        doc.setFont('helvetica','normal'); doc.text(String(valor), margin+38, y);
+        y += 4.6;
+      });
+      y += 4;
+    }
+
     doc.setFont('helvetica','normal'); doc.setFontSize(9);
     const linhas = doc.splitTextToSize(s.texto, maxWidth);
     linhas.forEach(linha=>{
-      if(y > pageHeight - 20){ doc.addPage(); y = 20; }
+      if(y > pageHeight - 20) y = novaPagina();
       doc.text(linha, margin, y);
-      y += 4.8;
+      y += 4.6;
     });
     y += 6;
   });
 
-  if(y > pageHeight - 40){ doc.addPage(); y = 20; }
+  if(y > pageHeight - 60) y = novaPagina();
+  doc.setFont('helvetica','normal'); doc.setFontSize(9);
+  doc.splitTextToSize('E, por estarem de acordo com todas as cláusulas e condições deste Termo, as partes o assinam em 2 (duas) vias de igual teor e forma, juntamente com 2 (duas) testemunhas.', maxWidth).forEach(l=>{ doc.text(l, margin, y); y += 4.6; });
+  y += 10;
+  doc.text('Local e data: ' + linhaOuBranco(null,50), margin, y);
   y += 20;
   doc.setDrawColor(150);
-  doc.line(margin, y, margin+70, y);
-  doc.line(pageWidth-margin-70, y, pageWidth-margin, y);
+  doc.line(margin, y, margin+75, y);
+  doc.line(pageWidth-margin-75, y, pageWidth-margin, y);
   y += 5;
   doc.setFontSize(9);
-  doc.text('EMPRESA', margin+35, y, { align:'center' });
-  doc.text('CONDUTOR', pageWidth-margin-35, y, { align:'center' });
+  doc.text('EMPRESA (representante legal)', margin+37, y, { align:'center' });
+  doc.text('EMPREGADO(A) CONDUTOR(A)', pageWidth-margin-37, y, { align:'center' });
+  y += 16;
+  doc.setFontSize(9);
+  doc.text('Testemunhas:', margin, y); y += 8;
+  doc.text(`1) ${linhaOuBranco(null,35)}   CPF: ${linhaOuBranco(null,18)}`, margin, y); y += 8;
+  doc.text(`2) ${linhaOuBranco(null,35)}   CPF: ${linhaOuBranco(null,18)}`, margin, y); y += 12;
 
-  doc.save('termo_responsabilidade_condutor.pdf');
+  if(y > pageHeight - 30) y = novaPagina();
+  doc.setFont('helvetica','bold'); doc.setFontSize(9);
+  doc.text('ANEXO I', margin, y); y += 5;
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5);
+  doc.splitTextToSize('Vistoria fotográfica (anexar imagens datadas do veículo na entrega e na devolução — ver fotos cadastradas na ficha do veículo).', maxWidth).forEach(l=>{ doc.text(l, margin, y); y+=4.4; });
+  y += 6;
+  doc.setFont('helvetica','bold'); doc.setFontSize(9);
+  doc.text('ANEXO II', margin, y); y += 5;
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5);
+  doc.splitTextToSize('Autorização específica de desconto (a ser preenchida e assinada individualmente, para cada evento de desconto, após a conclusão do procedimento de apuração previsto na Cláusula 6ª, com indicação do valor exato, do número de parcelas e do fato gerador).', maxWidth).forEach(l=>{ doc.text(l, margin, y); y+=4.4; });
+
+  rodape();
+
+  const nomeArquivo = vehicle ? `termo_condutor_${vehicle.placa}.pdf` : 'termo_responsabilidade_condutor.pdf';
+  doc.save(nomeArquivo);
   showToast('PDF gerado.');
 }
+
 
 // ---------- EMITIR VALE ----------
 function formatBRL(num){
