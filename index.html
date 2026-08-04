@@ -6315,7 +6315,7 @@ async function enterApp(){
 const DEV_PROTECTED_EMAIL = 'ozorio.neto@grupojet.com.br';
 async function renderUsersList(){
   const wrap = document.getElementById('usersTableWrap');
-  const { data, error } = await sb.from('app_users_public').select('*').order('name');
+  const { data, error } = await sb.from('app_users').select('id,name,email,role,active,fin_acesso,frota_acesso').order('name');
   if(error){
     wrap.innerHTML = `<div class="empty-state"><p>Erro ao carregar usuários: ${escapeHtml(error.message)}</p></div>`;
     return;
