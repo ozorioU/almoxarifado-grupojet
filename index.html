@@ -470,6 +470,15 @@
         <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/></svg>
         <span>Fornecedores</span>
       </div>
+      <div class="nav-section-label" id="frotaSectionLabel" style="display:none;">Frota</div>
+      <div class="nav-item" id="navFrotaVeiculos" data-view="frota-veiculos" onclick="switchView('frota-veiculos')" style="display:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 16H9m10 0h3v-3.15a1 1 0 0 0-.84-.99L16 11l-2.7-3.6a1 1 0 0 0-.8-.4H5.5a1 1 0 0 0-1 .74L3 11.5V16h2"/><circle cx="6.5" cy="16.5" r="2.5"/><circle cx="16.5" cy="16.5" r="2.5"/></svg>
+        <span>Veículos</span>
+      </div>
+      <div class="nav-item" id="navFrotaTermo" data-view="frota-termo" onclick="switchView('frota-termo')" style="display:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="m9 15 2 2 4-4"/></svg>
+        <span>Termo do Condutor</span>
+      </div>
       <div class="nav-section-label" id="adminSectionLabel" style="display:none;">Administração</div>
       <div class="nav-item" id="navUsers" data-view="users" onclick="switchView('users')" style="display:none;">
         <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
@@ -499,6 +508,13 @@
             <h3 style="color:#92400E;">EPIs vencidos ou próximos do vencimento</h3>
           </div>
           <div class="card-body" id="homeAlertsBody" style="padding-top:6px;"></div>
+        </div>
+        <div class="card" id="fleetAlertsCard" style="display:none;border-color:#FBD9AE;max-width:900px;margin:0 auto 24px;">
+          <div class="card-head" style="background:#FFF8EF;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#B45309" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 16H9m10 0h3v-3.15a1 1 0 0 0-.84-.99L16 11l-2.7-3.6a1 1 0 0 0-.8-.4H5.5a1 1 0 0 0-1 .74L3 11.5V16h2"/><circle cx="6.5" cy="16.5" r="2.5"/><circle cx="16.5" cy="16.5" r="2.5"/></svg>
+            <h3 style="color:#92400E;">Veículos com manutenção próxima ou atrasada</h3>
+          </div>
+          <div class="card-body" id="fleetAlertsBody" style="padding-top:6px;"></div>
         </div>
         <div style="max-width:620px;margin:0 auto;">
           <div style="text-align:center;margin-bottom:22px;">
@@ -1039,6 +1055,81 @@
         </div>
       </div>
 
+      <!-- FROTA: VEICULOS -->
+      <div class="view" id="view-frota-veiculos">
+        <div id="vlListSection">
+          <div class="page-head">
+            <div>
+              <h2>Veículos</h2>
+              <p>Cadastro da frota, condutor atual e alertas de manutenção.</p>
+            </div>
+            <button class="btn btn-primary" onclick="abrirNovoVeiculoForm()">+ Novo veículo</button>
+          </div>
+          <div class="search-row">
+            <input type="text" id="vlSearchInput" placeholder="Buscar por placa, marca, modelo ou condutor..." oninput="renderVeiculos(this.value)">
+          </div>
+          <div class="card" style="padding:0;overflow-x:auto;">
+            <div id="vlTableWrap"></div>
+          </div>
+        </div>
+
+        <div id="vlFormSection" style="display:none;">
+          <button class="btn btn-outline btn-sm" style="margin-bottom:16px;" onclick="fecharVeiculoForm()">← Voltar para a lista</button>
+          <div class="card">
+            <div class="card-head">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 16H9m10 0h3v-3.15a1 1 0 0 0-.84-.99L16 11l-2.7-3.6a1 1 0 0 0-.8-.4H5.5a1 1 0 0 0-1 .74L3 11.5V16h2"/><circle cx="6.5" cy="16.5" r="2.5"/><circle cx="16.5" cy="16.5" r="2.5"/></svg>
+              <h3 id="veiculoFormTitle">Novo veículo</h3>
+            </div>
+            <div class="card-body" style="padding-top:16px;">
+              <div class="form-grid">
+                <div class="form-field"><label>Placa *</label><input type="text" id="vl_placa" placeholder="ABC1D23"></div>
+                <div class="form-field"><label>Marca</label><input type="text" id="vl_marca"></div>
+                <div class="form-field"><label>Modelo</label><input type="text" id="vl_modelo"></div>
+                <div class="form-field"><label>Ano</label><input type="text" id="vl_ano" placeholder="2023"></div>
+                <div class="form-field"><label>Cor</label><input type="text" id="vl_cor"></div>
+                <div class="form-field"><label>RENAVAM</label><input type="text" id="vl_renavam"></div>
+                <div class="form-field"><label>Chassi</label><input type="text" id="vl_chassi"></div>
+                <div class="form-field"><label>KM atual</label><input type="text" id="vl_km_atual" placeholder="0"></div>
+                <div class="form-field">
+                  <label>Status</label>
+                  <select id="vl_status"><option>Ativo</option><option>Em manutenção</option><option>Inativo</option></select>
+                </div>
+                <div class="form-field"><label>Próxima manutenção (data)</label><input type="date" id="vl_prox_manut_data"></div>
+                <div class="form-field"><label>Próxima manutenção (KM)</label><input type="text" id="vl_prox_manut_km" placeholder="Opcional"></div>
+                <div class="form-field full"><label>Observações</label><textarea id="vl_obs" rows="2"></textarea></div>
+              </div>
+              <div class="modal-actions" style="justify-content:flex-start;margin-top:18px;">
+                <button type="button" class="btn btn-primary" id="vlSubmitBtn" onclick="saveVeiculo(event)">Cadastrar veículo</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="vlFichaSection" style="display:none;">
+          <button class="btn btn-outline btn-sm" style="margin-bottom:16px;" onclick="fecharVeiculoFicha()">← Voltar para a lista</button>
+          <div id="vlFichaContent"></div>
+        </div>
+      </div>
+
+      <!-- FROTA: TERMO DO CONDUTOR -->
+      <div class="view" id="view-frota-termo">
+        <div class="page-head">
+          <div>
+            <h2>Termo do Condutor</h2>
+            <p>Modelo de termo de responsabilidade para condutores de veículos da empresa.</p>
+          </div>
+          <button class="btn btn-primary" onclick="imprimirTermoCondutor()">🖨️ Imprimir PDF</button>
+        </div>
+        <div class="card" style="padding:0;background:#FFFBEB;border-color:#FBBF24;margin-bottom:18px;">
+          <div class="card-body" style="padding:14px 18px;font-size:12.5px;color:#92400E;">
+            ⚠️ <strong>Aviso importante:</strong> este é um modelo orientativo, fundamentado na CLT e no Código de Trânsito Brasileiro. Ele <strong>não substitui a Convenção Coletiva de Trabalho (CCT)</strong> vigente da categoria, que pode trazer regras específicas mais favoráveis ao empregado (e que prevalecem, nos termos do art. 620 da CLT). Recomenda-se revisão por advogado(a) trabalhista antes de utilizar este termo com colaboradores, especialmente quanto às cláusulas de desconto salarial.
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-body" style="padding:28px 32px;" id="termoCondutorContent"></div>
+        </div>
+      </div>
+
       <!-- MODAL: cadastro rapido de item -->
       <div class="modal-overlay" id="modalQuickItem">
         <div class="modal" style="max-width:420px;">
@@ -1056,6 +1147,53 @@
           <div class="modal-actions">
             <button type="button" class="btn btn-outline" onclick="closeModal('modalQuickItem')">Cancelar</button>
             <button type="button" class="btn btn-primary" onclick="confirmarCadastroRapidoItem()">Cadastrar e adicionar ao pedido</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODAL: atribuir condutor a veiculo -->
+      <div class="modal-overlay" id="modalAtribuirCondutor">
+        <div class="modal" style="max-width:420px;">
+          <h3>Atribuir condutor</h3>
+          <div class="form-grid">
+            <div class="form-field full">
+              <label>Colaborador</label>
+              <select id="ac_employee"></select>
+            </div>
+            <div class="form-field">
+              <label>Data de início</label>
+              <input type="date" id="ac_data_inicio">
+            </div>
+            <div class="form-field full">
+              <label>Observações</label>
+              <textarea id="ac_obs" rows="2"></textarea>
+            </div>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-outline" onclick="closeModal('modalAtribuirCondutor')">Cancelar</button>
+            <button type="button" class="btn btn-primary" onclick="confirmarAtribuirCondutor()">Atribuir</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODAL: registrar manutencao -->
+      <div class="modal-overlay" id="modalManutencao">
+        <div class="modal" style="max-width:460px;">
+          <h3>Registrar manutenção</h3>
+          <div class="form-grid">
+            <div class="form-field"><label>Data</label><input type="date" id="mn_data"></div>
+            <div class="form-field">
+              <label>Tipo</label>
+              <select id="mn_tipo"><option>Preventiva</option><option>Corretiva</option><option>Revisão</option><option>Troca de óleo</option><option>Pneus</option><option>Outro</option></select>
+            </div>
+            <div class="form-field"><label>KM no momento</label><input type="text" id="mn_km" placeholder="0"></div>
+            <div class="form-field"><label>Valor (R$)</label><input type="text" id="mn_valor" placeholder="0,00"></div>
+            <div class="form-field full"><label>Fornecedor / Oficina</label><input type="text" id="mn_fornecedor"></div>
+            <div class="form-field full"><label>Descrição</label><textarea id="mn_descricao" rows="2"></textarea></div>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-outline" onclick="closeModal('modalManutencao')">Cancelar</button>
+            <button type="button" class="btn btn-primary" onclick="confirmarRegistrarManutencao()">Registrar</button>
           </div>
         </div>
       </div>
@@ -1517,6 +1655,17 @@
           </label>
         </div>
       </div>
+      <div class="form-field full">
+        <label>Acesso à Frota</label>
+        <div style="display:flex;flex-wrap:wrap;gap:14px;padding:10px 0;">
+          <label style="display:flex;align-items:center;gap:6px;font-weight:500;font-size:13px;">
+            <input type="checkbox" id="u_frota_veiculos" style="width:auto;"> Veículos
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;font-weight:500;font-size:13px;">
+            <input type="checkbox" id="u_frota_termo" style="width:auto;"> Termo do Condutor
+          </label>
+        </div>
+      </div>
     </div>
     <div class="modal-actions">
       <button type="button" class="btn btn-outline" onclick="closeModal('modalUser')">Cancelar</button>
@@ -1607,7 +1756,13 @@ let state = {
   currentPedidoDetailId: null,
   editingSupplierId: null,
   issuedPurchaseOrders: [],
-  currentPedidoEmitidoDetailId: null
+  currentPedidoEmitidoDetailId: null,
+  vehicles: [],
+  vehiclePhotos: [],
+  vehicleAssignments: [],
+  vehicleMaintenances: [],
+  editingVeiculoId: null,
+  currentVeiculoFichaId: null
 };
 
 const ICONS = {
@@ -1721,6 +1876,26 @@ async function loadAll(){
     if(error) throw error;
     state.issuedPurchaseOrders = data || [];
   }catch(e){ state.issuedPurchaseOrders = state.issuedPurchaseOrders || []; }
+  try{
+    const { data, error } = await sb.from('vehicles').select('*').order('placa');
+    if(error) throw error;
+    state.vehicles = data || [];
+  }catch(e){ state.vehicles = state.vehicles || []; }
+  try{
+    const { data, error } = await sb.from('vehicle_photos').select('*').order('created_at');
+    if(error) throw error;
+    state.vehiclePhotos = data || [];
+  }catch(e){ state.vehiclePhotos = state.vehiclePhotos || []; }
+  try{
+    const { data, error } = await sb.from('vehicle_assignments').select('*');
+    if(error) throw error;
+    state.vehicleAssignments = data || [];
+  }catch(e){ state.vehicleAssignments = state.vehicleAssignments || []; }
+  try{
+    const { data, error } = await sb.from('vehicle_maintenances').select('*').order('data', { ascending:false });
+    if(error) throw error;
+    state.vehicleMaintenances = data || [];
+  }catch(e){ state.vehicleMaintenances = state.vehicleMaintenances || []; }
   try{
     const { data, error } = await sb.from('invoices').select('*').order('created_at', { ascending:false });
     if(error) throw error;
@@ -1931,12 +2106,19 @@ function showToast(msg){
   setTimeout(()=>t.classList.remove('show'), 2200);
 }
 
-const PAGE_TITLES = { home:'Início', employees:'Colaboradores', ficha:'Ficha do colaborador', stock:'Cadastrar itens', items:'Buscar item', users:'Usuários', vale:'Emitir vale', chip:'Controle de Chip', 'fin-pedidos':'Orçamentos', 'fin-notas':'Notas Fiscais', 'fin-pagamentos':'Pagamentos', 'fin-resumo':'Resumo Financeiro', 'fin-fornecedores':'Fornecedores', 'fin-emitidos':'Pedidos de Compra' };
+const PAGE_TITLES = { home:'Início', employees:'Colaboradores', ficha:'Ficha do colaborador', stock:'Cadastrar itens', items:'Buscar item', users:'Usuários', vale:'Emitir vale', chip:'Controle de Chip', 'fin-pedidos':'Orçamentos', 'fin-notas':'Notas Fiscais', 'fin-pagamentos':'Pagamentos', 'fin-resumo':'Resumo Financeiro', 'fin-fornecedores':'Fornecedores', 'fin-emitidos':'Pedidos de Compra', 'frota-veiculos':'Veículos', 'frota-termo':'Termo do Condutor' };
 const FIN_VIEW_TO_TAB = { 'fin-pedidos':'pedidos', 'fin-notas':'notas', 'fin-pagamentos':'pagamentos', 'fin-resumo':'resumo', 'fin-fornecedores':'fornecedores', 'fin-emitidos':'emitidos' };
+const FROTA_VIEW_TO_TAB = { 'frota-veiculos':'veiculos', 'frota-termo':'termo' };
 function canAccessFin(tabKey){
   if(!state.currentUser) return false;
   if(state.currentUser.role === 'desenvolvedor') return true;
   const acesso = state.currentUser.fin_acesso || [];
+  return acesso.includes(tabKey);
+}
+function canAccessFrota(tabKey){
+  if(!state.currentUser) return false;
+  if(state.currentUser.role === 'desenvolvedor') return true;
+  const acesso = state.currentUser.frota_acesso || [];
   return acesso.includes(tabKey);
 }
 
@@ -1948,6 +2130,10 @@ async function switchView(name){
   }
   if(FIN_VIEW_TO_TAB[name] && !canAccessFin(FIN_VIEW_TO_TAB[name])){
     showToast('Você não tem permissão para acessar essa área financeira.');
+    name = 'home';
+  }
+  if(FROTA_VIEW_TO_TAB[name] && !canAccessFrota(FROTA_VIEW_TO_TAB[name])){
+    showToast('Você não tem permissão para acessar essa área da frota.');
     name = 'home';
   }
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
@@ -1970,6 +2156,8 @@ async function switchView(name){
   if(name==='fin-resumo') renderResumoFinanceiro();
   if(name==='fin-fornecedores') renderSuppliers();
   if(name==='fin-emitidos'){ fecharPedidoEmitidoDetail(true); renderPedidosEmitidos(); }
+  if(name==='frota-veiculos'){ fecharVeiculoForm(true); fecharVeiculoFicha(true); renderVeiculos(); }
+  if(name==='frota-termo') renderTermoCondutor();
   if(name==='vale'){ if(state.valeEmployeeId) renderValeItemsChecklist(); }
 }
 
@@ -2044,6 +2232,7 @@ function runHomeSearch(){
 }
 function renderHome(){
   renderHomeAlerts();
+  renderFleetAlerts();
 }
 function getEpiAlerts(){
   return state.items
@@ -2073,6 +2262,29 @@ function renderHomeAlerts(){
         <span>${emp ? `<a class="name-link" onclick="openFicha('${emp.id}')">${escapeHtml(emp.nome)}</a>` : '—'} — ${escapeHtml(a.it.descricao)} <span class="code">(CA ${escapeHtml(a.it.ca||'—')})</span></span>
       </div>
       <div class="value" style="color:${cor};font-size:12.5px;">${situacaoTexto} · ${fmtDate(a.it.caValidade)}</div>
+    </div>`;
+  }).join('');
+}
+function renderFleetAlerts(){
+  const card = document.getElementById('fleetAlertsCard');
+  const body = document.getElementById('fleetAlertsBody');
+  if(!card || !body) return;
+  const alerts = getFleetAlerts();
+  if(alerts.length===0){
+    card.style.display = 'none';
+    return;
+  }
+  card.style.display = 'block';
+  body.innerHTML = alerts.map(a=>{
+    const atrasado = a.dias < 0;
+    const cor = atrasado ? 'var(--red)' : '#B45309';
+    const situacaoTexto = atrasado ? `Atrasada há ${Math.abs(a.dias)} dia(s)` : `Em ${a.dias} dia(s)`;
+    return `<div class="status-row">
+      <div class="label">
+        <span style="font-size:16px;">${atrasado ? '🔴' : '🟠'}</span>
+        <span><a class="name-link" onclick="switchView('frota-veiculos');setTimeout(()=>abrirVeiculoFicha('${a.v.id}'),100)">${escapeHtml(a.v.placa)}</a> — ${escapeHtml(a.v.marca||'')} ${escapeHtml(a.v.modelo||'')}</span>
+      </div>
+      <div class="value" style="color:${cor};font-size:12.5px;">${situacaoTexto} · ${fmtDate(a.v.proxima_manutencao_data)}</div>
     </div>`;
   }).join('');
 }
@@ -4832,6 +5044,410 @@ function toggleResumoCategoria(cat){
   renderResumoFinanceiro();
 }
 
+// ---------- FROTA: VEICULOS ----------
+async function dbInsertVehicle(v){ const {error}=await sb.from('vehicles').insert(v); if(error) showToast('Erro ao salvar veículo: '+error.message); }
+async function dbUpdateVehicle(v){ const {error}=await sb.from('vehicles').update(v).eq('id',v.id); if(error) showToast('Erro ao salvar veículo: '+error.message); }
+async function dbDeleteVehicle(id){ const {error}=await sb.from('vehicles').delete().eq('id',id); if(error) showToast('Erro ao excluir veículo: '+error.message); }
+async function dbInsertVehiclePhoto(p){ const {error}=await sb.from('vehicle_photos').insert(p); if(error) showToast('Erro ao salvar foto: '+error.message); }
+async function dbDeleteVehiclePhoto(id){ const {error}=await sb.from('vehicle_photos').delete().eq('id',id); if(error) showToast('Erro ao excluir foto: '+error.message); }
+async function dbInsertVehicleAssignment(a){ const {error}=await sb.from('vehicle_assignments').insert(a); if(error) showToast('Erro ao salvar condutor: '+error.message); }
+async function dbUpdateVehicleAssignment(a){ const {error}=await sb.from('vehicle_assignments').update(a).eq('id',a.id); if(error) showToast('Erro ao salvar condutor: '+error.message); }
+async function dbInsertVehicleMaintenance(m){ const {error}=await sb.from('vehicle_maintenances').insert(m); if(error) showToast('Erro ao salvar manutenção: '+error.message); }
+
+function abrirNovoVeiculoForm(){
+  state.editingVeiculoId = null;
+  document.getElementById('vlListSection').style.display = 'none';
+  document.getElementById('vlFichaSection').style.display = 'none';
+  document.getElementById('vlFormSection').style.display = 'block';
+  document.getElementById('veiculoFormTitle').textContent = 'Novo veículo';
+  ['vl_placa','vl_marca','vl_modelo','vl_ano','vl_cor','vl_renavam','vl_chassi','vl_km_atual','vl_prox_manut_data','vl_prox_manut_km','vl_obs'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('vl_status').value = 'Ativo';
+  document.getElementById('vlSubmitBtn').textContent = 'Cadastrar veículo';
+  window.scrollTo(0,0);
+}
+function fecharVeiculoForm(silent){
+  document.getElementById('vlFormSection').style.display = 'none';
+  document.getElementById('vlFichaSection').style.display = 'none';
+  document.getElementById('vlListSection').style.display = 'block';
+  if(!silent) renderVeiculos();
+}
+function editVeiculo(id){
+  const v = state.vehicles.find(x=>x.id===id);
+  if(!v) return;
+  state.editingVeiculoId = id;
+  document.getElementById('vlListSection').style.display = 'none';
+  document.getElementById('vlFichaSection').style.display = 'none';
+  document.getElementById('vlFormSection').style.display = 'block';
+  document.getElementById('veiculoFormTitle').textContent = 'Editar veículo';
+  document.getElementById('vl_placa').value = v.placa||'';
+  document.getElementById('vl_marca').value = v.marca||'';
+  document.getElementById('vl_modelo').value = v.modelo||'';
+  document.getElementById('vl_ano').value = v.ano||'';
+  document.getElementById('vl_cor').value = v.cor||'';
+  document.getElementById('vl_renavam').value = v.renavam||'';
+  document.getElementById('vl_chassi').value = v.chassi||'';
+  document.getElementById('vl_km_atual').value = v.km_atual!=null?String(v.km_atual):'';
+  document.getElementById('vl_status').value = v.status||'Ativo';
+  document.getElementById('vl_prox_manut_data').value = v.proxima_manutencao_data||'';
+  document.getElementById('vl_prox_manut_km').value = v.proxima_manutencao_km!=null?String(v.proxima_manutencao_km):'';
+  document.getElementById('vl_obs').value = v.obs||'';
+  document.getElementById('vlSubmitBtn').textContent = 'Salvar alterações';
+  window.scrollTo(0,0);
+}
+async function saveVeiculo(evt){
+  evt.preventDefault();
+  const placa = document.getElementById('vl_placa').value.trim().toUpperCase();
+  if(!placa){ showToast('Preencha a placa do veículo.'); return; }
+  const dup = state.vehicles.find(v=>v.id!==state.editingVeiculoId && normalize(v.placa)===normalize(placa));
+  if(dup){ showToast(`Já existe um veículo cadastrado com a placa ${placa}.`); return; }
+  const data = {
+    placa,
+    marca: document.getElementById('vl_marca').value.trim()||null,
+    modelo: document.getElementById('vl_modelo').value.trim()||null,
+    ano: document.getElementById('vl_ano').value.trim()||null,
+    cor: document.getElementById('vl_cor').value.trim()||null,
+    renavam: document.getElementById('vl_renavam').value.trim()||null,
+    chassi: document.getElementById('vl_chassi').value.trim()||null,
+    km_atual: parseFloat(document.getElementById('vl_km_atual').value)||null,
+    status: document.getElementById('vl_status').value,
+    proxima_manutencao_data: document.getElementById('vl_prox_manut_data').value||null,
+    proxima_manutencao_km: parseFloat(document.getElementById('vl_prox_manut_km').value)||null,
+    obs: document.getElementById('vl_obs').value.trim()||null
+  };
+  if(state.editingVeiculoId){
+    data.id = state.editingVeiculoId;
+    const idx = state.vehicles.findIndex(v=>v.id===data.id);
+    if(idx>-1) state.vehicles[idx] = { ...state.vehicles[idx], ...data };
+    dbUpdateVehicle(data);
+    showToast('Veículo atualizado.');
+  }else{
+    data.id = uid();
+    state.vehicles.push(data);
+    dbInsertVehicle(data);
+    showToast('Veículo cadastrado.');
+  }
+  fecharVeiculoForm();
+}
+async function deleteVeiculo(id){
+  const v = state.vehicles.find(x=>x.id===id);
+  if(!v) return;
+  if(!(await customConfirm(`Excluir o veículo placa ${v.placa}? Isso remove também fotos, histórico de condutores e manutenções.`))) return;
+  state.vehicles = state.vehicles.filter(x=>x.id!==id);
+  state.vehiclePhotos = state.vehiclePhotos.filter(p=>p.vehicle_id!==id);
+  state.vehicleAssignments = state.vehicleAssignments.filter(a=>a.vehicle_id!==id);
+  state.vehicleMaintenances = state.vehicleMaintenances.filter(m=>m.vehicle_id!==id);
+  renderVeiculos();
+  showToast('Veículo excluído.');
+  dbDeleteVehicle(id);
+}
+function condutorAtualDoVeiculo(vehicleId){
+  const assignment = state.vehicleAssignments.find(a=>a.vehicle_id===vehicleId && !a.data_fim);
+  if(!assignment) return null;
+  const employee = state.employees.find(e=>e.id===assignment.employee_id);
+  return { assignment, employee };
+}
+function diasParaProximaManutencao(vehicle){
+  if(!vehicle.proxima_manutencao_data) return null;
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const alvo = new Date(vehicle.proxima_manutencao_data+'T00:00:00');
+  return Math.round((alvo - hoje) / 86400000);
+}
+function manutencaoStatusInfo(vehicle){
+  const dias = diasParaProximaManutencao(vehicle);
+  if(dias === null) return null;
+  if(dias < 0) return { cor:'var(--red)', texto:`Manutenção atrasada há ${Math.abs(dias)} dia(s)` };
+  if(dias <= 15) return { cor:'#B45309', texto:`Manutenção em ${dias} dia(s)` };
+  return { cor:'var(--green)', texto:`Próxima manutenção em ${dias} dia(s)` };
+}
+function renderVeiculos(filter){
+  filter = filter!==undefined ? filter : (document.getElementById('vlSearchInput')?.value || '');
+  const wrap = document.getElementById('vlTableWrap');
+  const q = normalize(filter);
+  let list = state.vehicles.slice().sort((a,b)=>(a.placa||'').localeCompare(b.placa||''));
+  if(q){
+    list = list.filter(v=>{
+      const cond = condutorAtualDoVeiculo(v.id);
+      return [v.placa,v.marca,v.modelo,cond?.employee?.nome].some(f=>normalize(f).includes(q));
+    });
+  }
+  if(list.length===0){
+    wrap.innerHTML = `<div class="empty-state"><div class="icon">🚗</div><p>Nenhum veículo cadastrado ainda.</p></div>`;
+    return;
+  }
+  const rows = list.map(v=>{
+    const cond = condutorAtualDoVeiculo(v.id);
+    const manutInfo = manutencaoStatusInfo(v);
+    return `<tr>
+      <td class="code" style="font-weight:700;">${escapeHtml(v.placa)}</td>
+      <td>${escapeHtml(v.marca||'')} ${escapeHtml(v.modelo||'')}</td>
+      <td>${cond?.employee ? `<a class="name-link" onclick="openFicha('${cond.employee.id}')">${escapeHtml(cond.employee.nome)}</a>` : '<span class="code" style="color:var(--ink-faint);">Sem condutor</span>'}</td>
+      <td><span class="badge ${v.status==='Ativo'?'badge-estoque':(v.status==='Em manutenção'?'badge-cat-informatica':'badge-devolvido')}">${escapeHtml(v.status||'Ativo')}</span></td>
+      <td>${manutInfo ? `<span style="color:${manutInfo.cor};font-size:12.5px;font-weight:600;">${manutInfo.texto}</span>` : '<span class="code" style="color:var(--ink-faint);">—</span>'}</td>
+      <td class="row-actions">
+        <button class="btn btn-primary btn-sm" onclick="abrirVeiculoFicha('${v.id}')">Ver ficha</button>
+        <button class="btn btn-outline btn-sm" onclick="editVeiculo('${v.id}')">Editar</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteVeiculo('${v.id}')">Excluir</button>
+      </td>
+    </tr>`;
+  }).join('');
+  wrap.innerHTML = `<table>
+    <thead><tr><th>Placa</th><th>Marca/Modelo</th><th>Condutor atual</th><th>Status</th><th>Manutenção</th><th></th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+function abrirVeiculoFicha(id){
+  state.currentVeiculoFichaId = id;
+  document.getElementById('vlListSection').style.display = 'none';
+  document.getElementById('vlFormSection').style.display = 'none';
+  document.getElementById('vlFichaSection').style.display = 'block';
+  renderVeiculoFicha(id);
+  window.scrollTo(0,0);
+}
+function fecharVeiculoFicha(silent){
+  document.getElementById('vlFichaSection').style.display = 'none';
+  document.getElementById('vlFormSection').style.display = 'none';
+  document.getElementById('vlListSection').style.display = 'block';
+  if(!silent) renderVeiculos();
+}
+function renderVeiculoFicha(id){
+  const v = state.vehicles.find(x=>x.id===id);
+  const content = document.getElementById('vlFichaContent');
+  if(!v){ content.innerHTML = '<p>Veículo não encontrado.</p>'; return; }
+  const cond = condutorAtualDoVeiculo(id);
+  const manutInfo = manutencaoStatusInfo(v);
+  const fotos = state.vehiclePhotos.filter(p=>p.vehicle_id===id);
+  const historico = state.vehicleAssignments.filter(a=>a.vehicle_id===id).sort((a,b)=>(b.data_inicio||'').localeCompare(a.data_inicio||''));
+  const manutencoes = state.vehicleMaintenances.filter(m=>m.vehicle_id===id).sort((a,b)=>(b.data||'').localeCompare(a.data||''));
+
+  content.innerHTML = `
+    <div class="page-head">
+      <div><h2>${escapeHtml(v.placa)}</h2><p>${escapeHtml(v.marca||'')} ${escapeHtml(v.modelo||'')} ${v.ano?'· '+escapeHtml(v.ano):''} ${v.cor?'· '+escapeHtml(v.cor):''}</p></div>
+    </div>
+    <div class="card">
+      <div class="card-body" style="padding-top:16px;">
+        <div class="form-grid">
+          <div class="info-field"><label>Status</label><div><span class="badge ${v.status==='Ativo'?'badge-estoque':(v.status==='Em manutenção'?'badge-cat-informatica':'badge-devolvido')}">${escapeHtml(v.status||'Ativo')}</span></div></div>
+          <div class="info-field"><label>KM atual</label><div class="mono">${v.km_atual!=null?v.km_atual:'—'}</div></div>
+          <div class="info-field"><label>RENAVAM</label><div class="mono">${escapeHtml(v.renavam||'—')}</div></div>
+          <div class="info-field"><label>Chassi</label><div class="mono">${escapeHtml(v.chassi||'—')}</div></div>
+          <div class="info-field"><label>Próxima manutenção</label><div>${manutInfo ? `<span style="color:${manutInfo.cor};font-weight:600;">${fmtDate(v.proxima_manutencao_data)} — ${manutInfo.texto}</span>` : (v.proxima_manutencao_km ? `Aos ${v.proxima_manutencao_km} km` : '—')}</div></div>
+          <div class="info-field"><label>Condutor atual</label><div>${cond?.employee ? `<a class="name-link" onclick="openFicha('${cond.employee.id}')">${escapeHtml(cond.employee.nome)}</a>` : 'Sem condutor'}</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title"><h3>Fotos do veículo</h3></div>
+    <div class="card">
+      <div class="card-body" style="padding-top:16px;">
+        <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:14px;">
+          ${fotos.map(p=>`
+            <div style="position:relative;width:140px;">
+              <img src="${p.foto_base64}" style="width:140px;height:100px;object-fit:cover;border-radius:8px;border:1px solid var(--border);">
+              <button class="btn btn-danger btn-sm" style="position:absolute;top:4px;right:4px;padding:2px 6px;" onclick="removerFotoVeiculo('${p.id}')">✕</button>
+              ${p.legenda ? `<div style="font-size:11px;color:var(--ink-soft);margin-top:2px;">${escapeHtml(p.legenda)}</div>` : ''}
+            </div>`).join('')}
+          ${fotos.length===0 ? '<div style="font-size:12.5px;color:var(--ink-faint);">Nenhuma foto adicionada ainda.</div>' : ''}
+        </div>
+        <input type="file" id="vl_foto_input_${id}" accept="image/*" multiple onchange="handleFotoUpload('${id}', this)">
+      </div>
+    </div>
+
+    <div class="section-title">
+      <h3>Histórico de condutores</h3>
+      ${!cond ? `<button class="btn btn-primary btn-sm" onclick="abrirModalAtribuirCondutor('${id}')">+ Atribuir condutor</button>` : `<button class="btn btn-outline btn-sm" onclick="encerrarCondutorAtual('${id}')">Encerrar atribuição atual</button>`}
+    </div>
+    <div class="card" style="padding:0;overflow-x:auto;">
+      <table><thead><tr><th>Colaborador</th><th>Início</th><th>Fim</th><th>Observações</th></tr></thead>
+      <tbody>${historico.length===0 ? '<tr><td colspan="4" style="text-align:center;color:var(--ink-faint);padding:16px;">Nenhum condutor atribuído ainda.</td></tr>' : historico.map(a=>{
+        const emp = state.employees.find(e=>e.id===a.employee_id);
+        return `<tr>
+          <td>${emp ? `<a class="name-link" onclick="openFicha('${emp.id}')">${escapeHtml(emp.nome)}</a>` : '—'}</td>
+          <td class="code">${fmtDate(a.data_inicio)}</td>
+          <td class="code">${a.data_fim ? fmtDate(a.data_fim) : '<span style="color:var(--green);font-weight:600;">Atual</span>'}</td>
+          <td>${escapeHtml(a.obs||'—')}</td>
+        </tr>`;
+      }).join('')}</tbody></table>
+    </div>
+
+    <div class="section-title">
+      <h3>Histórico de manutenções</h3>
+      <button class="btn btn-primary btn-sm" onclick="abrirModalManutencao('${id}')">+ Registrar manutenção</button>
+    </div>
+    <div class="card" style="padding:0;overflow-x:auto;">
+      <table><thead><tr><th>Data</th><th>Tipo</th><th>KM</th><th>Descrição</th><th>Valor</th><th>Fornecedor</th></tr></thead>
+      <tbody>${manutencoes.length===0 ? '<tr><td colspan="6" style="text-align:center;color:var(--ink-faint);padding:16px;">Nenhuma manutenção registrada ainda.</td></tr>' : manutencoes.map(m=>`
+        <tr>
+          <td class="code">${fmtDate(m.data)}</td>
+          <td>${escapeHtml(m.tipo||'—')}</td>
+          <td class="code">${m.km!=null?m.km:'—'}</td>
+          <td>${escapeHtml(m.descricao||'—')}</td>
+          <td class="code">${m.valor!=null?formatBRL(m.valor):'—'}</td>
+          <td>${escapeHtml(m.fornecedor||'—')}</td>
+        </tr>`).join('')}</tbody></table>
+    </div>`;
+}
+function handleFotoUpload(vehicleId, inputEl){
+  const files = [...(inputEl.files||[])];
+  if(files.length===0) return;
+  let pendentes = files.length;
+  files.forEach(file=>{
+    const reader = new FileReader();
+    reader.onload = async (e)=>{
+      const photo = { id: uid(), vehicle_id: vehicleId, foto_base64: e.target.result, legenda: null };
+      state.vehiclePhotos.push(photo);
+      await dbInsertVehiclePhoto(photo);
+      pendentes--;
+      if(pendentes<=0){
+        renderVeiculoFicha(vehicleId);
+        showToast(`${files.length} foto(s) adicionada(s).`);
+      }
+    };
+    reader.readAsDataURL(file);
+  });
+  inputEl.value = '';
+}
+async function removerFotoVeiculo(photoId){
+  const photo = state.vehiclePhotos.find(p=>p.id===photoId);
+  if(!photo) return;
+  if(!(await customConfirm('Remover esta foto?'))) return;
+  state.vehiclePhotos = state.vehiclePhotos.filter(p=>p.id!==photoId);
+  dbDeleteVehiclePhoto(photoId);
+  renderVeiculoFicha(photo.vehicle_id);
+}
+function abrirModalAtribuirCondutor(vehicleId){
+  state.currentVeiculoFichaId = vehicleId;
+  const sel = document.getElementById('ac_employee');
+  const list = state.employees.slice().sort((a,b)=>a.nome.localeCompare(b.nome));
+  sel.innerHTML = list.length===0 ? '<option value="">Nenhum colaborador cadastrado</option>' : list.map(e=>`<option value="${e.id}">${escapeHtml(e.nome)} — ${escapeHtml(e.matricula||'')}</option>`).join('');
+  document.getElementById('ac_data_inicio').value = todayStr();
+  document.getElementById('ac_obs').value = '';
+  document.getElementById('modalAtribuirCondutor').classList.add('active');
+}
+async function confirmarAtribuirCondutor(){
+  const vehicleId = state.currentVeiculoFichaId;
+  const employeeId = document.getElementById('ac_employee').value;
+  if(!employeeId){ showToast('Selecione um colaborador.'); return; }
+  const dataInicio = document.getElementById('ac_data_inicio').value || todayStr();
+  const obs = document.getElementById('ac_obs').value.trim() || null;
+  const assignment = { id: uid(), vehicle_id: vehicleId, employee_id: employeeId, data_inicio: dataInicio, data_fim: null, obs };
+  state.vehicleAssignments.push(assignment);
+  await dbInsertVehicleAssignment(assignment);
+  closeModal('modalAtribuirCondutor');
+  showToast('Condutor atribuído.');
+  renderVeiculoFicha(vehicleId);
+}
+async function encerrarCondutorAtual(vehicleId){
+  const cond = condutorAtualDoVeiculo(vehicleId);
+  if(!cond) return;
+  if(!(await customConfirm(`Encerrar a atribuição de ${cond.employee?cond.employee.nome:'condutor'} a este veículo?`))) return;
+  cond.assignment.data_fim = todayStr();
+  await dbUpdateVehicleAssignment({ id: cond.assignment.id, data_fim: cond.assignment.data_fim });
+  showToast('Atribuição encerrada.');
+  renderVeiculoFicha(vehicleId);
+}
+function abrirModalManutencao(vehicleId){
+  state.currentVeiculoFichaId = vehicleId;
+  document.getElementById('mn_data').value = todayStr();
+  document.getElementById('mn_tipo').value = 'Preventiva';
+  document.getElementById('mn_km').value = '';
+  document.getElementById('mn_valor').value = '';
+  document.getElementById('mn_fornecedor').value = '';
+  document.getElementById('mn_descricao').value = '';
+  document.getElementById('modalManutencao').classList.add('active');
+}
+async function confirmarRegistrarManutencao(){
+  const vehicleId = state.currentVeiculoFichaId;
+  const data = document.getElementById('mn_data').value || todayStr();
+  const tipo = document.getElementById('mn_tipo').value;
+  const km = parseFloat(document.getElementById('mn_km').value) || null;
+  const valor = parseBRL(document.getElementById('mn_valor').value) || null;
+  const fornecedor = document.getElementById('mn_fornecedor').value.trim() || null;
+  const descricao = document.getElementById('mn_descricao').value.trim() || null;
+  const manut = { id: uid(), vehicle_id: vehicleId, data, tipo, km, valor, fornecedor, descricao };
+  state.vehicleMaintenances.push(manut);
+  await dbInsertVehicleMaintenance(manut);
+  const v = state.vehicles.find(x=>x.id===vehicleId);
+  if(v && km) { v.km_atual = km; dbUpdateVehicle({ id: v.id, km_atual: km }); }
+  closeModal('modalManutencao');
+  showToast('Manutenção registrada.');
+  renderVeiculoFicha(vehicleId);
+}
+function getFleetAlerts(){
+  return state.vehicles
+    .map(v => ({ v, dias: diasParaProximaManutencao(v) }))
+    .filter(a => a.dias !== null && a.dias <= 15)
+    .sort((a,b) => a.dias - b.dias);
+}
+
+// ---------- FROTA: TERMO DO CONDUTOR ----------
+const TERMO_CONDUTOR_TITULO = 'TERMO DE RESPONSABILIDADE DO CONDUTOR DE VEÍCULO';
+const TERMO_CONDUTOR_SECOES = [
+  { titulo: '1. Das partes e do objeto', texto: 'Pelo presente Termo de Responsabilidade, a empresa RD TELECOM LTDA., inscrita no CNPJ sob o nº 07.426.902/0001-33, doravante denominada "EMPRESA", cede ao empregado abaixo identificado, doravante denominado "CONDUTOR", o uso de veículo de sua propriedade ou posse, para fins exclusivamente relacionados ao exercício de suas atividades laborais, nos termos e condições estabelecidos neste instrumento.' },
+  { titulo: '2. Da habilitação e condições para condução', texto: '2.1. O CONDUTOR declara possuir Carteira Nacional de Habilitação (CNH) válida e compatível com a categoria do veículo cedido, comprometendo-se a comunicar imediatamente à EMPRESA qualquer suspensão, cassação ou vencimento de sua CNH.\n2.2. É expressamente proibida a condução do veículo por terceiros não autorizados pela EMPRESA, ainda que familiares ou colegas de trabalho.\n2.3. O CONDUTOR compromete-se a não conduzir o veículo sob efeito de álcool ou substâncias entorpecentes, nos termos da Lei nº 9.503/1997 (Código de Trânsito Brasileiro).' },
+  { titulo: '3. Do uso do veículo', texto: '3.1. O veículo destina-se exclusivamente ao uso em atividades relacionadas ao trabalho, sendo vedado o uso para fins particulares, salvo autorização expressa e por escrito da EMPRESA.\n3.2. O CONDUTOR obriga-se a zelar pela conservação do veículo, mantendo-o em boas condições de uso, higiene e segurança, comunicando imediatamente à EMPRESA qualquer problema mecânico, elétrico ou de segurança identificado.\n3.3. O CONDUTOR deverá respeitar integralmente as normas de trânsito previstas no Código de Trânsito Brasileiro e legislação correlata.' },
+  { titulo: '4. Das multas e infrações de trânsito', texto: '4.1. Nos termos do art. 257, §§7º e 8º, do Código de Trânsito Brasileiro, a responsabilidade pela infração cometida na condução do veículo poderá ser atribuída ao CONDUTOR identificado no momento da autuação.\n4.2. O CONDUTOR autoriza, desde já, que a EMPRESA proceda à identificação do condutor responsável junto ao órgão de trânsito competente, sempre que a infração for atribuível à sua conduta na direção do veículo.\n4.3. As multas decorrentes de infrações cometidas pelo CONDUTOR durante o uso do veículo serão de sua exclusiva responsabilidade, autorizando o CONDUTOR, desde já, o desconto do valor correspondente em folha de pagamento, mediante prévia comunicação e comprovação da infração.' },
+  { titulo: '5. De acidentes, sinistros e danos ao veículo', texto: '5.1. Em caso de acidente, colisão, furto, roubo ou qualquer sinistro envolvendo o veículo, o CONDUTOR obriga-se a comunicar imediatamente à EMPRESA e, quando aplicável, à autoridade policial competente, adotando as providências necessárias para registro da ocorrência (Boletim de Ocorrência).\n5.2. Responsabilidade por dolo: nos termos do art. 462, §1º, da CLT (Decreto-Lei nº 5.452/1943), em caso de dano ao veículo causado por conduta dolosa do CONDUTOR (ação ou omissão intencional, incluindo condução sob efeito de álcool/drogas, uso não autorizado do veículo, fuga do local do sinistro, ou grave e evidente inobservância das normas de trânsito), a EMPRESA poderá descontar da remuneração do CONDUTOR o valor correspondente ao dano comprovado, respeitados os limites que preservem o mínimo existencial do trabalhador.\n5.3. Responsabilidade por culpa: em caso de dano causado por mera negligência, imprudência ou imperícia do CONDUTOR, sem dolo, a EMPRESA poderá descontar da remuneração do CONDUTOR o valor correspondente ao dano comprovado, desde que exista prévio acordo entre as partes — o que o CONDUTOR expressamente autoriza, desde já, mediante a assinatura deste Termo, nos termos do art. 462, §1º, da CLT.\n5.4. Os descontos referidos nos itens 5.2 e 5.3 observarão os seguintes limites e condições: (a) o desconto será limitado ao valor efetivamente comprovado do dano, mediante orçamento(s) e/ou nota fiscal de reparo; (b) o desconto não poderá comprometer a subsistência do CONDUTOR, podendo ser parcelado em valor compatível com sua renda, observado o que for mais benéfico previsto na Convenção Coletiva de Trabalho (CCT) aplicável; (c) o CONDUTOR será previamente comunicado, por escrito, sobre o valor apurado e a forma de desconto, podendo apresentar defesa no prazo que vier a ser fixado pela EMPRESA antes da efetivação; (d) havendo cobertura de seguro, o desconto restringir-se-á à franquia e/ou valores não cobertos pela apólice.\n5.5. Este Termo não afasta a aplicação de disposições mais favoráveis ao CONDUTOR eventualmente previstas na Convenção Coletiva de Trabalho (CCT) vigente da categoria profissional a que pertence, as quais prevalecerão sobre as cláusulas deste instrumento, nos termos do art. 620 da CLT.' },
+  { titulo: '6. Da devolução do veículo', texto: '6.1. O veículo deverá ser devolvido à EMPRESA sempre que solicitado, ou ao término do vínculo de trabalho ou da necessidade de uso, nas mesmas condições em que foi recebido, ressalvado o desgaste natural pelo uso regular.\n6.2. Na devolução, será realizada vistoria conjunta entre EMPRESA e CONDUTOR, com registro fotográfico do estado do veículo.' },
+  { titulo: '7. Disposições gerais', texto: '7.1. Este Termo não gera qualquer forma de posse ou propriedade do veículo em favor do CONDUTOR, tratando-se de mera cessão de uso para fins laborais.\n7.2. O descumprimento das obrigações previstas neste Termo poderá acarretar sanções disciplinares nos termos da legislação trabalhista, sem prejuízo da responsabilização civil e, se for o caso, criminal do CONDUTOR.\n7.3. Este Termo é regido pela Consolidação das Leis do Trabalho (CLT), pelo Código de Trânsito Brasileiro (Lei nº 9.503/1997), pelo Código Civil (Lei nº 10.406/2002) e pela Convenção Coletiva de Trabalho (CCT) aplicável à categoria profissional do CONDUTOR.' }
+];
+function renderTermoCondutor(){
+  const el = document.getElementById('termoCondutorContent');
+  if(!el) return;
+  el.innerHTML = `
+    <h2 style="text-align:center;font-size:16px;margin-bottom:24px;">${TERMO_CONDUTOR_TITULO}</h2>
+    ${TERMO_CONDUTOR_SECOES.map(s=>`
+      <div style="margin-bottom:18px;">
+        <h4 style="font-size:13px;margin-bottom:6px;">${escapeHtml(s.titulo)}</h4>
+        <p style="font-size:12.5px;line-height:1.7;color:var(--ink-soft);white-space:pre-line;">${escapeHtml(s.texto)}</p>
+      </div>`).join('')}
+    <div style="margin-top:40px;display:flex;justify-content:space-between;gap:40px;font-size:12.5px;">
+      <div style="flex:1;text-align:center;border-top:1px solid var(--border);padding-top:8px;">EMPRESA</div>
+      <div style="flex:1;text-align:center;border-top:1px solid var(--border);padding-top:8px;">CONDUTOR</div>
+    </div>`;
+}
+function imprimirTermoCondutor(){
+  if(typeof window.jspdf === 'undefined'){ showToast('Não foi possível carregar o gerador de PDF (verifique sua conexão e tente novamente).'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:'mm', format:'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 18;
+  const maxWidth = pageWidth - margin*2;
+  let y = 20;
+
+  doc.setFont('helvetica','bold'); doc.setFontSize(13);
+  doc.text(TERMO_CONDUTOR_TITULO, pageWidth/2, y, { align:'center' });
+  y += 12;
+
+  TERMO_CONDUTOR_SECOES.forEach(s=>{
+    if(y > pageHeight - 30){ doc.addPage(); y = 20; }
+    doc.setFont('helvetica','bold'); doc.setFontSize(10.5);
+    doc.text(s.titulo, margin, y);
+    y += 6;
+    doc.setFont('helvetica','normal'); doc.setFontSize(9);
+    const linhas = doc.splitTextToSize(s.texto, maxWidth);
+    linhas.forEach(linha=>{
+      if(y > pageHeight - 20){ doc.addPage(); y = 20; }
+      doc.text(linha, margin, y);
+      y += 4.8;
+    });
+    y += 6;
+  });
+
+  if(y > pageHeight - 40){ doc.addPage(); y = 20; }
+  y += 20;
+  doc.setDrawColor(150);
+  doc.line(margin, y, margin+70, y);
+  doc.line(pageWidth-margin-70, y, pageWidth-margin, y);
+  y += 5;
+  doc.setFontSize(9);
+  doc.text('EMPRESA', margin+35, y, { align:'center' });
+  doc.text('CONDUTOR', pageWidth-margin-35, y, { align:'center' });
+
+  doc.save('termo_responsabilidade_condutor.pdf');
+  showToast('PDF gerado.');
+}
+
 // ---------- EMITIR VALE ----------
 function formatBRL(num){
   return 'R$ ' + (num||0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
@@ -5396,7 +6012,7 @@ async function attemptLogin(){
     }
     state.currentUser = data[0];
     try{
-      const { data: fresh } = await sb.from('app_users').select('id,name,email,role,active,fin_acesso').eq('id', data[0].id);
+      const { data: fresh } = await sb.from('app_users').select('id,name,email,role,active,fin_acesso,frota_acesso').eq('id', data[0].id);
       if(fresh && fresh[0]) state.currentUser = { ...state.currentUser, ...fresh[0] };
     }catch(e){}
     saveSession(state.currentUser);
@@ -5437,6 +6053,12 @@ function applyRoleUI(){
   document.getElementById('navFinResumo').style.display = podeResumo ? 'flex' : 'none';
   document.getElementById('navFinFornecedores').style.display = podeFornecedores ? 'flex' : 'none';
   document.getElementById('finSectionLabel').style.display = (podePedidos||podeNotas||podePagamentos||podeResumo||podeFornecedores||podeEmitidos) ? 'block' : 'none';
+
+  const podeVeiculos = canAccessFrota('veiculos');
+  const podeTermo = canAccessFrota('termo');
+  document.getElementById('navFrotaVeiculos').style.display = podeVeiculos ? 'flex' : 'none';
+  document.getElementById('navFrotaTermo').style.display = podeTermo ? 'flex' : 'none';
+  document.getElementById('frotaSectionLabel').style.display = (podeVeiculos||podeTermo) ? 'block' : 'none';
 }
 
 async function enterApp(){
@@ -5511,6 +6133,9 @@ function openUserForm(id){
   document.getElementById('u_fin_resumo').checked = finAcesso.includes('resumo');
   document.getElementById('u_fin_fornecedores').checked = finAcesso.includes('fornecedores');
   document.getElementById('u_fin_emitidos').checked = finAcesso.includes('emitidos');
+  const frotaAcesso = u?.frota_acesso || [];
+  document.getElementById('u_frota_veiculos').checked = frotaAcesso.includes('veiculos');
+  document.getElementById('u_frota_termo').checked = frotaAcesso.includes('termo');
   document.getElementById('modalUser').classList.add('active');
 }
 async function saveUserForm(evt){
@@ -5525,6 +6150,9 @@ async function saveUserForm(evt){
   if(document.getElementById('u_fin_resumo').checked) finAcesso.push('resumo');
   if(document.getElementById('u_fin_fornecedores').checked) finAcesso.push('fornecedores');
   if(document.getElementById('u_fin_emitidos').checked) finAcesso.push('emitidos');
+  const frotaAcesso = [];
+  if(document.getElementById('u_frota_veiculos').checked) frotaAcesso.push('veiculos');
+  if(document.getElementById('u_frota_termo').checked) frotaAcesso.push('termo');
 
   if(!name || !email){ showToast('Preencha nome e e-mail.'); return; }
   if(role === 'desenvolvedor' && normalize(email) !== normalize(DEV_PROTECTED_EMAIL)){
@@ -5550,7 +6178,7 @@ async function saveUserForm(evt){
         showToast('Este usuário é protegido pelo sistema e não pode ser editado.');
         return;
       }
-      const payload = { name, role, fin_acesso: finAcesso };
+      const payload = { name, role, fin_acesso: finAcesso, frota_acesso: frotaAcesso };
       if(password){
         const { data:hash, error:hashErr } = await sb.rpc('hash_password', { p_password: password });
         if(hashErr) throw hashErr;
@@ -5562,12 +6190,13 @@ async function saveUserForm(evt){
       if(state.currentUser && state.currentUser.id === state.editingUserId){
         state.currentUser.role = role;
         state.currentUser.fin_acesso = finAcesso;
+        state.currentUser.frota_acesso = frotaAcesso;
         applyRoleUI();
       }
     }else{
       const { data:hash, error:hashErr } = await sb.rpc('hash_password', { p_password: password });
       if(hashErr) throw hashErr;
-      const { error } = await sb.from('app_users').insert({ name, email, role, password_hash: hash, fin_acesso: finAcesso });
+      const { error } = await sb.from('app_users').insert({ name, email, role, password_hash: hash, fin_acesso: finAcesso, frota_acesso: frotaAcesso });
       if(error) throw error;
       showToast('Usuário criado.');
     }
@@ -5610,7 +6239,7 @@ async function init(){
   const session = loadSession();
   if(session && session.id){
     try{
-      const { data, error } = await sb.from('app_users').select('id,name,email,role,active,fin_acesso').eq('id', session.id).single();
+      const { data, error } = await sb.from('app_users').select('id,name,email,role,active,fin_acesso,frota_acesso').eq('id', session.id).single();
       if(error || !data || !data.active) throw new Error('sessão inválida');
       state.currentUser = data;
       saveSession(data);
