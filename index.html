@@ -5481,8 +5481,7 @@ function renderTermoCondutor(vehicleId){
     <div style="border:1px solid var(--border);border-radius:8px;padding:16px 18px;margin-bottom:20px;font-size:12.5px;line-height:1.9;">
       <strong>EMPRESA:</strong> ${escapeHtml(EMPRESA_NOME)}<br>
       <strong>CNPJ:</strong> ${escapeHtml(EMPRESA_CNPJ)}<br>
-      <strong>Endereço:</strong> ${escapeHtml(EMPRESA_ENDERECO)}<br>
-      <strong>Representante legal:</strong> ${linhaOuBranco(null,30)}<br><br>
+      <strong>Endereço:</strong> ${escapeHtml(EMPRESA_ENDERECO)}<br><br>
       <strong>EMPREGADO(A) CONDUTOR(A):</strong> ${employee ? escapeHtml(employee.nome) : linhaOuBranco(null,40)}<br>
       <strong>CPF:</strong> ${employee ? escapeHtml(employee.cpf||'—') : linhaOuBranco(null,20)}<br>
       <strong>CNH nº / Categoria / Validade:</strong> ${cnh ? escapeHtml(cnh) : linhaOuBranco(null,30)}<br>
@@ -5584,7 +5583,6 @@ function imprimirTermoCondutor(vehicleId){
     ['EMPRESA:', EMPRESA_NOME],
     ['CNPJ:', EMPRESA_CNPJ],
     ['Endereço:', EMPRESA_ENDERECO],
-    ['Representante legal:', linhaOuBranco(null,30)],
     ['', ''],
     ['EMPREGADO(A) CONDUTOR(A):', employee ? employee.nome : linhaOuBranco(null,40)],
     ['CPF:', employee ? (employee.cpf||'—') : linhaOuBranco(null,20)],
