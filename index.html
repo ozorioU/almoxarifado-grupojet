@@ -1785,7 +1785,8 @@ let state = {
   vehicleMaintenances: [],
   editingVeiculoId: null,
   currentVeiculoFichaId: null,
-  termoCondutorVehicleId: null
+  termoCondutorVehicleId: null,
+  termoEmpresaIndex: 0
 };
 
 const ICONS = {
@@ -1855,86 +1856,37 @@ function employeeToRow(e){
 
 // ---------- storage (Supabase) ----------
 async function loadAll(){
-  try{
-    const { data, error } = await sb.from('employees').select('*').order('nome');
-    if(error) throw error;
-    state.employees = data || [];
-  }catch(e){ state.employees = state.employees || []; showToast('Erro ao carregar colaboradores: ' + (e.message||e)); }
-  try{
-    const { data, error } = await sb.from('items').select('*');
-    if(error) throw error;
-    state.items = (data || []).map(rowToItem);
-  }catch(e){ state.items = state.items || []; showToast('Erro ao carregar itens: ' + (e.message||e)); }
-  try{
-    const { data, error } = await sb.from('epi_catalog').select('*').order('descricao');
-    if(error) throw error;
-    state.epiCatalog = data || [];
-  }catch(e){ state.epiCatalog = state.epiCatalog || []; showToast('Erro ao carregar catálogo de EPI/EPC: ' + (e.message||e)); }
-  try{
-    const { data, error } = await sb.from('purchase_orders').select('*').order('created_at', { ascending:false });
-    if(error) throw error;
-    state.purchaseOrders = data || [];
-  }catch(e){ state.purchaseOrders = state.purchaseOrders || []; }
-  try{
-    const { data, error } = await sb.from('purchase_order_items').select('*');
-    if(error) throw error;
-    state.purchaseOrderItems = data || [];
-  }catch(e){ state.purchaseOrderItems = state.purchaseOrderItems || []; }
-  try{
-    const { data, error } = await sb.from('purchase_items_catalog').select('*').order('descricao');
-    if(error) throw error;
-    state.purchaseItemsCatalog = data || [];
-  }catch(e){ state.purchaseItemsCatalog = state.purchaseItemsCatalog || []; }
-  try{
-    const { data, error } = await sb.from('suppliers').select('*').order('nome');
-    if(error) throw error;
-    state.suppliers = data || [];
-  }catch(e){ state.suppliers = state.suppliers || []; }
-  try{
-    const { data, error } = await sb.from('purchase_order_quotes').select('*');
-    if(error) throw error;
-    state.purchaseOrderQuotes = data || [];
-  }catch(e){ state.purchaseOrderQuotes = state.purchaseOrderQuotes || []; }
-  try{
-    const { data, error } = await sb.from('issued_purchase_orders').select('*').order('created_at', { ascending:false });
-    if(error) throw error;
-    state.issuedPurchaseOrders = data || [];
-  }catch(e){ state.issuedPurchaseOrders = state.issuedPurchaseOrders || []; }
-  try{
-    const { data, error } = await sb.from('vehicles').select('*').order('placa');
-    if(error) throw error;
-    state.vehicles = data || [];
-  }catch(e){ state.vehicles = state.vehicles || []; }
-  try{
-    const { data, error } = await sb.from('vehicle_photos').select('*').order('created_at');
-    if(error) throw error;
-    state.vehiclePhotos = data || [];
-  }catch(e){ state.vehiclePhotos = state.vehiclePhotos || []; }
-  try{
-    const { data, error } = await sb.from('vehicle_assignments').select('*');
-    if(error) throw error;
-    state.vehicleAssignments = data || [];
-  }catch(e){ state.vehicleAssignments = state.vehicleAssignments || []; }
-  try{
-    const { data, error } = await sb.from('vehicle_maintenances').select('*').order('data', { ascending:false });
-    if(error) throw error;
-    state.vehicleMaintenances = data || [];
-  }catch(e){ state.vehicleMaintenances = state.vehicleMaintenances || []; }
-  try{
-    const { data, error } = await sb.from('invoices').select('*').order('created_at', { ascending:false });
-    if(error) throw error;
-    state.invoices = data || [];
-  }catch(e){ state.invoices = state.invoices || []; }
-  try{
-    const { data, error } = await sb.from('invoice_items').select('*');
-    if(error) throw error;
-    state.invoiceItems = data || [];
-  }catch(e){ state.invoiceItems = state.invoiceItems || []; }
-  try{
-    const { data, error } = await sb.from('payments').select('*').order('created_at', { ascending:false });
-    if(error) throw error;
-    state.payments = data || [];
-  }catch(e){ state.payments = state.payments || []; }
+  const tarefa = async (tabela, aplicar, opts) => {
+    try{
+      let q = sb.from(tabela).select('*');
+      if(opts?.order) q = q.order(opts.order, opts.orderOpts);
+      const { data, error } = await q;
+      if(error) throw error;
+      aplicar(data || []);
+    }catch(e){
+      aplicar(null, e);
+      if(opts?.avisoErro) showToast(opts.avisoErro + ': ' + (e.message||e));
+    }
+  };
+
+  await Promise.all([
+    tarefa('employees', (d,e)=>{ state.employees = e ? (state.employees||[]) : d; }, { order:'nome', avisoErro:'Erro ao carregar colaboradores' }),
+    tarefa('items', (d,e)=>{ state.items = e ? (state.items||[]) : d.map(rowToItem); }, { avisoErro:'Erro ao carregar itens' }),
+    tarefa('epi_catalog', (d,e)=>{ state.epiCatalog = e ? (state.epiCatalog||[]) : d; }, { order:'descricao', avisoErro:'Erro ao carregar catálogo de EPI/EPC' }),
+    tarefa('purchase_orders', (d,e)=>{ state.purchaseOrders = e ? (state.purchaseOrders||[]) : d; }, { order:'created_at', orderOpts:{ascending:false} }),
+    tarefa('purchase_order_items', (d,e)=>{ state.purchaseOrderItems = e ? (state.purchaseOrderItems||[]) : d; }),
+    tarefa('purchase_items_catalog', (d,e)=>{ state.purchaseItemsCatalog = e ? (state.purchaseItemsCatalog||[]) : d; }, { order:'descricao' }),
+    tarefa('suppliers', (d,e)=>{ state.suppliers = e ? (state.suppliers||[]) : d; }, { order:'nome' }),
+    tarefa('purchase_order_quotes', (d,e)=>{ state.purchaseOrderQuotes = e ? (state.purchaseOrderQuotes||[]) : d; }),
+    tarefa('issued_purchase_orders', (d,e)=>{ state.issuedPurchaseOrders = e ? (state.issuedPurchaseOrders||[]) : d; }, { order:'created_at', orderOpts:{ascending:false} }),
+    tarefa('vehicles', (d,e)=>{ state.vehicles = e ? (state.vehicles||[]) : d; }, { order:'placa' }),
+    tarefa('vehicle_assignments', (d,e)=>{ state.vehicleAssignments = e ? (state.vehicleAssignments||[]) : d; }),
+    tarefa('vehicle_maintenances', (d,e)=>{ state.vehicleMaintenances = e ? (state.vehicleMaintenances||[]) : d; }, { order:'data', orderOpts:{ascending:false} }),
+    tarefa('invoices', (d,e)=>{ state.invoices = e ? (state.invoices||[]) : d; }, { order:'created_at', orderOpts:{ascending:false} }),
+    tarefa('invoice_items', (d,e)=>{ state.invoiceItems = e ? (state.invoiceItems||[]) : d; }),
+    tarefa('payments', (d,e)=>{ state.payments = e ? (state.payments||[]) : d; }, { order:'created_at', orderOpts:{ascending:false} })
+  ]);
+
   refreshFornecedoresList();
   refreshCategoriasGastoList();
   state.loaded = true;
@@ -5234,13 +5186,21 @@ function renderVeiculos(filter){
     <tbody>${rows}</tbody>
   </table>`;
 }
-function abrirVeiculoFicha(id){
+async function abrirVeiculoFicha(id){
   state.currentVeiculoFichaId = id;
   document.getElementById('vlListSection').style.display = 'none';
   document.getElementById('vlFormSection').style.display = 'none';
   document.getElementById('vlFichaSection').style.display = 'block';
-  renderVeiculoFicha(id);
   window.scrollTo(0,0);
+  renderVeiculoFicha(id);
+  try{
+    const { data, error } = await sb.from('vehicle_photos').select('*').eq('vehicle_id', id).order('created_at');
+    if(error) throw error;
+    state.vehiclePhotos = state.vehiclePhotos.filter(p=>p.vehicle_id!==id).concat(data || []);
+    if(state.currentVeiculoFichaId === id) renderVeiculoFicha(id);
+  }catch(e){
+    showToast('Erro ao carregar fotos do veículo: ' + (e.message||e));
+  }
 }
 function fecharVeiculoFicha(silent){
   document.getElementById('vlFichaSection').style.display = 'none';
@@ -5424,9 +5384,10 @@ function getFleetAlerts(){
 // ---------- FROTA: TERMO DO CONDUTOR ----------
 const TERMO_CONDUTOR_TITULO = 'TERMO DE RESPONSABILIDADE E ENTREGA DE VEÍCULO';
 const TERMO_CONDUTOR_SUBTITULO = 'Cessão de veículo da empresa a empregado condutor — termo de uso, guarda e autorização de desconto salarial';
-const EMPRESA_NOME = 'RD TELECOM LTDA.';
-const EMPRESA_CNPJ = '07.426.902/0001-33';
-const EMPRESA_ENDERECO = 'Av. Santos, 398, Quadra 17, Lote 07, Jardim Novo Mundo, CEP 74715-450, Goiânia/GO';
+const EMPRESAS_TERMO = [
+  { nome: 'RD TELECOM LTDA.', cnpj: '07.426.902/0001-33', endereco: 'Av. Santos, 398, Quadra 17, Lote 07, Jardim Novo Mundo, CEP 74715-450, Goiânia/GO' },
+  { nome: 'RRD TELECOM LTDA', cnpj: '53.879.486/0001-46', endereco: 'Rua Aprígio José de Sousa, 269, Quadra 18, Lote 113, Setor Central, CEP 75.180-000, Silvânia/GO' }
+];
 
 const TERMO_CONDUTOR_INTRO = 'Pelo presente instrumento particular, de um lado a EMPRESA acima identificada, e de outro lado o(a) EMPREGADO(A) CONDUTOR(A) abaixo identificado(a), têm entre si justo e acertado o presente TERMO DE RESPONSABILIDADE DE CONDUTOR ("Termo"), que se regerá pela Consolidação das Leis do Trabalho (CLT), em especial o art. 462; pelo Código de Trânsito Brasileiro (CTB – Lei nº 9.503/1997); pela Lei Geral de Proteção de Dados (LGPD – Lei nº 13.709/2018); e pela Convenção Coletiva de Trabalho aplicável à categoria e à base territorial do EMPREGADO, celebrada com o sindicato profissional respectivo e o correspondente sindicato patronal, cujas disposições mais favoráveis ou mais específicas prevalecem sobre este Termo, mediante as cláusulas seguintes:';
 
@@ -5455,20 +5416,32 @@ function linhaOuBranco(valor, tamanho){
   tamanho = tamanho || 40;
   return valor ? String(valor) : '_'.repeat(tamanho);
 }
+function selecionarEmpresaTermo(idx){
+  state.termoEmpresaIndex = parseInt(idx,10) || 0;
+  renderTermoCondutor(state.termoCondutorVehicleId);
+}
 function renderTermoCondutor(vehicleId){
   vehicleId = vehicleId !== undefined ? vehicleId : state.termoCondutorVehicleId;
   state.termoCondutorVehicleId = vehicleId || null;
   const { vehicle, employee } = condutorInfoParaTermo(vehicleId);
+  const empresa = EMPRESAS_TERMO[state.termoEmpresaIndex] || EMPRESAS_TERMO[0];
   const el = document.getElementById('termoCondutorContent');
   if(!el) return;
 
   const cnh = employee ? [employee.cnh_numero, employee.cnh_categoria, employee.cnh_validade ? 'val. '+fmtDate(employee.cnh_validade) : null].filter(Boolean).join(' / ') : '';
   const cargoMatricula = employee ? [employee.cargo, employee.matricula ? 'Mat. '+employee.matricula : null].filter(Boolean).join(' / ') : '';
 
-  let seletorHtml = '';
+  let seletorHtml = `
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:22px;">
+      <div class="form-field" style="max-width:360px;margin-bottom:0;">
+        <label>Empresa (CNPJ)</label>
+        <select onchange="selecionarEmpresaTermo(this.value)">
+          ${EMPRESAS_TERMO.map((e,i)=>`<option value="${i}" ${i===state.termoEmpresaIndex?'selected':''}>${escapeHtml(e.nome)} — ${escapeHtml(e.cnpj)}</option>`).join('')}
+        </select>
+      </div>`;
   if(state.vehicles.length > 0){
-    seletorHtml = `
-      <div class="form-field" style="max-width:420px;margin-bottom:22px;">
+    seletorHtml += `
+      <div class="form-field" style="max-width:360px;margin-bottom:0;">
         <label>Gerar preenchido para o veículo/condutor</label>
         <select onchange="renderTermoCondutor(this.value||null)">
           <option value="">— Modelo em branco —</option>
@@ -5476,12 +5449,13 @@ function renderTermoCondutor(vehicleId){
         </select>
       </div>`;
   }
+  seletorHtml += `</div>`;
 
   const identificacaoHtml = `
     <div style="border:1px solid var(--border);border-radius:8px;padding:16px 18px;margin-bottom:20px;font-size:12.5px;line-height:1.9;">
-      <strong>EMPRESA:</strong> ${escapeHtml(EMPRESA_NOME)}<br>
-      <strong>CNPJ:</strong> ${escapeHtml(EMPRESA_CNPJ)}<br>
-      <strong>Endereço:</strong> ${escapeHtml(EMPRESA_ENDERECO)}<br><br>
+      <strong>EMPRESA:</strong> ${escapeHtml(empresa.nome)}<br>
+      <strong>CNPJ:</strong> ${escapeHtml(empresa.cnpj)}<br>
+      <strong>Endereço:</strong> ${escapeHtml(empresa.endereco)}<br><br>
       <strong>EMPREGADO(A) CONDUTOR(A):</strong> ${employee ? escapeHtml(employee.nome) : linhaOuBranco(null,40)}<br>
       <strong>CPF:</strong> ${employee ? escapeHtml(employee.cpf||'—') : linhaOuBranco(null,20)}<br>
       <strong>CNH nº / Categoria / Validade:</strong> ${cnh ? escapeHtml(cnh) : linhaOuBranco(null,30)}<br>
@@ -5537,6 +5511,7 @@ function imprimirTermoCondutor(vehicleId){
   vehicleId = vehicleId !== undefined ? vehicleId : state.termoCondutorVehicleId;
   if(typeof window.jspdf === 'undefined'){ showToast('Não foi possível carregar o gerador de PDF (verifique sua conexão e tente novamente).'); return; }
   const { vehicle, employee } = condutorInfoParaTermo(vehicleId);
+  const empresa = EMPRESAS_TERMO[state.termoEmpresaIndex] || EMPRESAS_TERMO[0];
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit:'mm', format:'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -5548,7 +5523,7 @@ function imprimirTermoCondutor(vehicleId){
   function cabecalho(){
     try{ doc.addImage(LOGO_SRC, 'PNG', margin, 8, 22, 22*(117/426)); }catch(e){}
     doc.setFontSize(7.5); doc.setTextColor(140,140,140);
-    doc.text(EMPRESA_NOME, pageWidth-margin, 12, { align:'right' });
+    doc.text(empresa.nome, pageWidth-margin, 12, { align:'right' });
     doc.setDrawColor(200); doc.setLineWidth(0.2);
     doc.line(margin, 17, pageWidth-margin, 17);
     doc.setTextColor(0,0,0);
@@ -5580,9 +5555,9 @@ function imprimirTermoCondutor(vehicleId){
   const cnh = employee ? [employee.cnh_numero, employee.cnh_categoria, employee.cnh_validade ? 'val. '+fmtDate(employee.cnh_validade) : null].filter(Boolean).join(' / ') : '';
   const cargoMatricula = employee ? [employee.cargo, employee.matricula ? 'Mat. '+employee.matricula : null].filter(Boolean).join(' / ') : '';
   const identCampos = [
-    ['EMPRESA:', EMPRESA_NOME],
-    ['CNPJ:', EMPRESA_CNPJ],
-    ['Endereço:', EMPRESA_ENDERECO],
+    ['EMPRESA:', empresa.nome],
+    ['CNPJ:', empresa.cnpj],
+    ['Endereço:', empresa.endereco],
     ['', ''],
     ['EMPREGADO(A) CONDUTOR(A):', employee ? employee.nome : linhaOuBranco(null,40)],
     ['CPF:', employee ? (employee.cpf||'—') : linhaOuBranco(null,20)],
